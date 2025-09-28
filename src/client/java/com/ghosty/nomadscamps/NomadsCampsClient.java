@@ -14,7 +14,7 @@ public class NomadsCampsClient implements ClientModInitializer {
         //NETWORKING
         //How to handle the payload telling the client to open the camp supplies GUI
         ClientPlayNetworking.registerGlobalReceiver(CampSuppliesGUIPayload.ID, (payload, context) -> {
-            CampSuppliesGUI gui = new CampSuppliesGUI("home", payload.uuid());
+            CampSuppliesGUI gui = new CampSuppliesGUI(payload.showClaimScreen() ? "claim" : "home", payload.pos());
 
             MinecraftClient.getInstance().setScreen(gui);
         });

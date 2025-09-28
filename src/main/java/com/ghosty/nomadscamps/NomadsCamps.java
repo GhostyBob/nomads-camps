@@ -40,13 +40,11 @@ public class NomadsCamps implements ModInitializer {
         ServerPlayNetworking.registerGlobalReceiver(CampBlockSetOwnerPayload.ID,
                 (payload, context) -> {
                     ServerPlayerEntity sender = context.player();
-                    BlockEntity maybeSupplies = sender.getWorld().getBlockEntity(payload.suppliesLocation());
+                    BlockEntity maybeSupplies = sender.getWorld().getBlockEntity(payload.suppliesPos());
 
                     if(maybeSupplies instanceof CampBlockEntity supplies) {
                         if(supplies.setOwner(sender))
                             System.out.println("Owner set!");
-
-                        SuppliesData.setOwnedSuppliesPos((IEntityDataSaver) sender, payload.suppliesLocation());
                     } else {
                         throw(new NullPointerException("Given location does not contain camp supplies! [OWN]"));
                     }

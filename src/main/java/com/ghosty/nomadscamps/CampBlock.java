@@ -82,8 +82,8 @@ public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
     public void onPlaced(World world, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         if(!world.isClient) {
             if(world.getBlockEntity(pos) instanceof CampBlockEntity campBlockEntity) {
-                NbtCompound nbt = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA).copyNbt();
-                if(nbt != null) campBlockEntity.readNbt(nbt, world.getRegistryManager());
+                NbtComponent component = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA);
+                if(component != null) campBlockEntity.readNbt(component.copyNbt(), world.getRegistryManager());
             }
         }
     }

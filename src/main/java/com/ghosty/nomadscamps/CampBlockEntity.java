@@ -26,8 +26,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 public class CampBlockEntity extends BlockEntity {
-    private PlayerEntity owner;
-    private UUID uuid;
+    private final UUID DEFAULTUUID = UUID.fromString("ab63890e-685f-4ccd-b319-1b62d2d39444");
+    private UUID uuid = DEFAULTUUID;
+
 
     //Constructor
     public CampBlockEntity(BlockPos pos, BlockState state) {
@@ -40,9 +41,11 @@ public class CampBlockEntity extends BlockEntity {
         if(player instanceof ServerPlayerEntity serverPlayer) {
             if(checkOwner(player)) {
                 //Send a packet to the client to open the camp supplies GUI
-                ServerPlayNetworking.send(serverPlayer, new CampSuppliesGUIPayload(this.uuid));
+                ServerPlayNetworking.send(serverPlayer, new CampSuppliesGUIPayload(this.pos, false));
+            } else if(findOwner() == null) {
+                ServerPlayNetworking.send(serverPlayer, new CampSuppliesGUIPayload(this.pos, true));
             } else {
-                serverPlayer.sendMessage(Text.of("You don't own these supplies!"), true);
+                serverPlayer.sendMessage(Text.of("These supplies are owned by: " + findOwner().getNameForScoreboard()), true);
             }
         }
     }
@@ -56,7 +59,7 @@ public class CampBlockEntity extends BlockEntity {
 //    }
 
     public boolean setOwner(PlayerEntity player) {
-        if(uuid == null) {
+        if(uuid == DEFAULTUUID) {
             uuid = player.getUuid();
             return true;
         }
@@ -64,11 +67,16 @@ public class CampBlockEntity extends BlockEntity {
     }
 
     public boolean checkOwner(PlayerEntity player) {
-        if(owner == null) return false;
         return uuid.equals(player.getUuid());
     }
 
-    public PlayerEntity getOwner() { return owner; }
+    public PlayerEntity findOwner() {
+        try {
+            return world.getPlayerByUuid(uuid);
+        } catch(NullPointerException e) {
+            return null;
+        }
+    }
 
     //Functionality related to saving/placing structures
     private boolean ableToSave = true;
@@ -100,7 +108,7 @@ public class CampBlockEntity extends BlockEntity {
             }
             //Write the structure from the world to the template
             structureTemplate.saveFromWorld(world, origin, structureSizeInt, true, Blocks.BEDROCK);
-            structureTemplate.setAuthor(owner.getUuidAsString());
+            structureTemplate.setAuthor(uuid.toString());
             //Save the template
             try {
                 System.out.println("Successfully saved " + structureName);

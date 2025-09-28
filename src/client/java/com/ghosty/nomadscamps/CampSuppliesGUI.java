@@ -7,6 +7,7 @@ import com.ghosty.nomadscamps.util.SuppliesData;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.block.entity.StructureBlockBlockEntity;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
 import net.minecraft.client.gui.Selectable;
@@ -14,6 +15,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ElementListWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.gui.widget.TextWidget;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
@@ -35,23 +37,23 @@ public class CampSuppliesGUI extends Screen {
     private static final Identifier BACKGROUND_TEXTURE = Identifier.ofVanilla("textures/gui/demo_background.png");
     private int backgroundWidth = 248;
     private int backgroundHeight = 166;
-    public UUID uuid;
+    public BlockPos pos;
     //demo_background.png is 248x166px
 
     //A placeholder implementation
     public static ArrayList<String> savedStructures;
 
-    public CampSuppliesGUI(String title, UUID passedUuid) {
+    public CampSuppliesGUI(String title, BlockPos passedPos) {
         super(Text.of(title));
         address = title;
-        uuid = passedUuid;
+        pos = passedPos;
     }
 
-    public CampSuppliesGUI(String title, Screen prev, UUID passedUuid) {
+    public CampSuppliesGUI(String title, Screen prev, BlockPos passedPos) {
         super(Text.of(title));
         address = title;
         prevScreen = prev;
-        uuid = passedUuid;
+        pos = passedPos;
     }
 
     @Override
@@ -65,6 +67,9 @@ public class CampSuppliesGUI extends Screen {
                 break;
             case "structureCreator":
                 openStructureCreator();
+                break;
+            case "claim":
+                openClaimScreen();
                 break;
             default:
                 close();
@@ -170,24 +175,26 @@ public class CampSuppliesGUI extends Screen {
                 20
         ).build();
 
-        //Temporary button
-        //TODO implement supplies ownership
-        ButtonWidget claimOwnershipButton = ButtonWidget.builder(Text.of("Claim Ownership"), (btn) -> {
-            //sendOwnershipPacket(new BlockPos(5, -60, 5));
-            sendOwnershipPacket();
-
-        }).dimensions(
-                (super.width / 2) - 60,
-                (super.height / 2) - 10,
-                120,
-                20
-        ).build();
-        this.addDrawableChild(claimOwnershipButton);
-
 
         this.addDrawableChild(closeButton);
         this.addDrawableChild(saveButton);
         this.addDrawableChild(nameField);
+    }
+
+    private void openClaimScreen() {
+        //TODO implement supplies ownership
+        ButtonWidget claimOwnershipButton = ButtonWidget.builder(Text.of("Claim Ownership"), (btn) -> {
+
+            sendOwnershipPacket();
+
+        }).dimensions(
+                (super.width / 2) - 60,
+                (super.height / 3) - 10,
+                120,
+                20
+        ).build();
+
+        this.addDrawableChild(claimOwnershipButton);
     }
 
     @Override
@@ -195,9 +202,9 @@ public class CampSuppliesGUI extends Screen {
 
     protected void switchScreen(String title, @Nullable Screen parent) {
         if(parent == null) {
-            this.client.setScreen((new CampSuppliesGUI(title, uuid)));
+            this.client.setScreen((new CampSuppliesGUI(title, pos)));
         } else {
-            this.client.setScreen(new CampSuppliesGUI(title, parent, uuid));
+            this.client.setScreen(new CampSuppliesGUI(title, parent, pos));
         }
     }
 
@@ -214,7 +221,7 @@ public class CampSuppliesGUI extends Screen {
 
     //Temporary implementation
     private boolean sendOwnershipPacket() {
-        ClientPlayNetworking.send(new CampBlockSetOwnerPayload());
+        ClientPlayNetworking.send(new CampBlockSetOwnerPayload(pos));
         return true;
     }
 
