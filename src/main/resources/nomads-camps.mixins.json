@@ -1,0 +1,15 @@
+{
+	"required": true,
+	"package": "com.ghosty.nomadscamps.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+      "ModEntityDataSaverMixin",
+		"ExampleMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
