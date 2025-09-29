@@ -1,9 +1,11 @@
 package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.CampSuppliesGUIPayload;
+import com.ghosty.nomadscamps.networking.ReturnStructuresPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.structure.StructureTemplateManager;
 
 public class NomadsCampsClient implements ClientModInitializer {
 	@Override
@@ -18,10 +20,15 @@ public class NomadsCampsClient implements ClientModInitializer {
 
             MinecraftClient.getInstance().setScreen(gui);
         });
-	}
 
-    public static String[] getKnownStructuresFromFile() {
-        //TODO Implement this method
-        return new String[0];
-    }
+        ClientPlayNetworking.registerGlobalReceiver(ReturnStructuresPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                if(context.client().currentScreen instanceof CampSuppliesGUI gui) {
+                    if(gui.address.equals("structureList")) {
+                        gui.receiveStructures(payload.names());
+                    }
+                }
+            });
+        });
+	}
 }

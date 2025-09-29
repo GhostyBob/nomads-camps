@@ -2,6 +2,7 @@ package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.CampBlockSavePayload;
 import com.ghosty.nomadscamps.networking.CampBlockSetOwnerPayload;
+import com.ghosty.nomadscamps.networking.QueryStructuresPayload;
 import com.ghosty.nomadscamps.util.IEntityDataSaver;
 import com.ghosty.nomadscamps.util.SuppliesData;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -33,16 +34,14 @@ import java.util.UUID;
 
 public class CampSuppliesGUI extends Screen {
     public Screen prevScreen = null;
-    private String address;
+    public String address;
+    public static ArrayList<String> savedStructures;
+    private TextWidget structureListLoadingText;
     private static final Identifier BACKGROUND_TEXTURE = Identifier.ofVanilla("textures/gui/demo_background.png");
     private int backgroundWidth = 248;
     private int backgroundHeight = 166;
     public BlockPos pos;
     //demo_background.png is 248x166px
-
-    //A placeholder implementation
-    public static ArrayList<String> savedStructures;
-
     public CampSuppliesGUI(String title, BlockPos passedPos) {
         super(Text.of(title));
         address = title;
@@ -134,18 +133,19 @@ public class CampSuppliesGUI extends Screen {
                 20
         ).build();
 
-        savedStructures = new ArrayList<>(List.of(NomadsCampsClient.getKnownStructuresFromFile()));
-
-        structureListWidget structureList = new structureListWidget(client,
+        //Fetch saved structures
+        ClientPlayNetworking.send(new QueryStructuresPayload());
+        structureListLoadingText = new TextWidget(
+                (super.height / 2 - backgroundHeight / 2) + 5,
+                (super.width / 2 - backgroundWidth / 2) + 5,
                 backgroundWidth / 2,
                 backgroundHeight - 10,
-                (super.width / 2 - backgroundWidth / 2) + 5,
-                (super.height / 2 - backgroundHeight / 2) + 5
-        );
+                Text.of("Fetching saved structures..."),
+                textRenderer);
+        this.addDrawableChild(structureListLoadingText);
 
         this.addDrawableChild(newStructureButton);
         this.addDrawableChild(closeButton);
-        this.addDrawableChild(structureList);
     }
 
     private void openStructureCreator() {
@@ -159,7 +159,7 @@ public class CampSuppliesGUI extends Screen {
 
         ButtonWidget saveButton = ButtonWidget.builder(Text.of("Save"), (btn) -> {
             //TODO implement button func
-            sendSavePacket(Identifier.of(NomadsCamps.MOD_ID, nameField.getText().toLowerCase()), new BlockPos(0, -60, 0), new Vec3i(3, 3, 3));
+            sendSavePacket(pos, Identifier.of(NomadsCamps.MOD_ID, MinecraftClient.getInstance().player.getNameForScoreboard() + "/" + nameField.getText().toLowerCase()), new BlockPos(0, -60, 0), new Vec3i(3, 3, 3));
         }).dimensions(
                 (super.width / 2) - (backgroundWidth / 4) - 30,
                 (super.height / 2) + (backgroundHeight / 4) - 10,
@@ -182,7 +182,7 @@ public class CampSuppliesGUI extends Screen {
     }
 
     private void openClaimScreen() {
-        //TODO implement supplies ownership
+        //TODO make this screen prettier
         ButtonWidget claimOwnershipButton = ButtonWidget.builder(Text.of("Claim Ownership"), (btn) -> {
 
             sendOwnershipPacket();
@@ -195,6 +195,21 @@ public class CampSuppliesGUI extends Screen {
         ).build();
 
         this.addDrawableChild(claimOwnershipButton);
+    }
+
+    public void receiveStructures(ArrayList<String> names) {
+        savedStructures = names;
+
+        if(address.equals("structureList")) {
+            structureListWidget structureList = new structureListWidget(client,
+                    backgroundWidth / 2,
+                    backgroundHeight - 10,
+                    (super.width / 2 - backgroundWidth / 2) + 5,
+                    (super.height / 2 - backgroundHeight / 2) + 5
+            );
+            this.addDrawableChild(structureList);
+            this.remove(structureListLoadingText);
+        }
     }
 
     @Override
@@ -214,12 +229,11 @@ public class CampSuppliesGUI extends Screen {
         context.drawTexture(BACKGROUND_TEXTURE, i, j, 0, 0.0F, 0.0F, this.backgroundWidth, this.backgroundHeight, 256, 256);
     }
 
-    private boolean sendSavePacket(Identifier structureName, BlockPos origin, Vec3i size) {
-        ClientPlayNetworking.send(new CampBlockSavePayload(structureName, origin, Vec3d.of(size)));
+    private boolean sendSavePacket(BlockPos suppliesPos, Identifier structureName, BlockPos origin, Vec3i size) {
+        ClientPlayNetworking.send(new CampBlockSavePayload(suppliesPos, structureName, origin, Vec3d.of(size)));
         return true;
     }
 
-    //Temporary implementation
     private boolean sendOwnershipPacket() {
         ClientPlayNetworking.send(new CampBlockSetOwnerPayload(pos));
         return true;

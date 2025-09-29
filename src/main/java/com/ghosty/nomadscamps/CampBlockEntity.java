@@ -1,8 +1,6 @@
 package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.CampSuppliesGUIPayload;
-import com.ghosty.nomadscamps.util.IEntityDataSaver;
-import com.ghosty.nomadscamps.util.SuppliesData;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -39,7 +37,7 @@ public class CampBlockEntity extends BlockEntity {
     public void showGUI(PlayerEntity player) {
         //Get the relevant ServerPlayerEntity from the passed PlayerEntity
         if(player instanceof ServerPlayerEntity serverPlayer) {
-            if(checkOwner(player)) {
+            if(ownedBy(player)) {
                 //Send a packet to the client to open the camp supplies GUI
                 ServerPlayNetworking.send(serverPlayer, new CampSuppliesGUIPayload(this.pos, false));
             } else if(findOwner() == null) {
@@ -50,14 +48,6 @@ public class CampBlockEntity extends BlockEntity {
         }
     }
 
-//    public boolean setOwner(PlayerEntity player) {
-//        if(owner == null) {
-//            owner = player;
-//            return true;
-//        }
-//        return false;
-//    }
-
     public boolean setOwner(PlayerEntity player) {
         if(uuid == DEFAULTUUID) {
             uuid = player.getUuid();
@@ -66,7 +56,7 @@ public class CampBlockEntity extends BlockEntity {
         return false;
     }
 
-    public boolean checkOwner(PlayerEntity player) {
+    public boolean ownedBy(PlayerEntity player) {
         return uuid.equals(player.getUuid());
     }
 
