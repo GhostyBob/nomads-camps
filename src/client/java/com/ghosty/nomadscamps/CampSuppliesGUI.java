@@ -159,7 +159,7 @@ public class CampSuppliesGUI extends Screen {
 
         ButtonWidget saveButton = ButtonWidget.builder(Text.of("Save"), (btn) -> {
             //TODO implement button func
-            sendSavePacket(pos, Identifier.of(NomadsCamps.MOD_ID, MinecraftClient.getInstance().player.getNameForScoreboard() + "/" + nameField.getText().toLowerCase()), new BlockPos(0, -60, 0), new Vec3i(3, 3, 3));
+            sendSavePacket(pos, Identifier.of(NomadsCamps.MOD_ID, /*MinecraftClient.getInstance().player.getNameForScoreboard().toLowerCase() + "/" + */nameField.getText().toLowerCase()), new BlockPos(0, -60, 0), new Vec3i(3, 3, 3));
         }).dimensions(
                 (super.width / 2) - (backgroundWidth / 4) - 30,
                 (super.height / 2) + (backgroundHeight / 4) - 10,
@@ -186,6 +186,7 @@ public class CampSuppliesGUI extends Screen {
         ButtonWidget claimOwnershipButton = ButtonWidget.builder(Text.of("Claim Ownership"), (btn) -> {
 
             sendOwnershipPacket();
+            this.close();
 
         }).dimensions(
                 (super.width / 2) - 60,

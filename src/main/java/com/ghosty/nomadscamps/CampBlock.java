@@ -53,7 +53,7 @@ public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
 
     @Override
     protected ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
-        //If there isn't a camp supplies block enetity at the interacted position, do the default thing
+        //If there isn't a camp supplies block entity at the interacted position, do the default thing
         if(!(world.getBlockEntity(pos) instanceof CampBlockEntity campBlockEntity)) {
             return super.onUse(state, world, pos, player, hit);
         }
@@ -71,7 +71,7 @@ public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
             //Writes campBlockEntity's uuid into nbt
             NbtCompound nbt = new NbtCompound();
             campBlockEntity.writeNbt(nbt, world.getRegistryManager());
-            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(nbt));
+            stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
 
             ItemScatterer.spawn(world, pos.getX(), pos.getY(), pos.getZ(), stack);
         }
@@ -82,7 +82,7 @@ public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
     public void onPlaced(World world, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         if(!world.isClient) {
             if(world.getBlockEntity(pos) instanceof CampBlockEntity campBlockEntity) {
-                NbtComponent component = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA);
+                NbtComponent component = stack.get(DataComponentTypes.CUSTOM_DATA);
                 if(component != null) campBlockEntity.readNbt(component.copyNbt(), world.getRegistryManager());
             }
         }

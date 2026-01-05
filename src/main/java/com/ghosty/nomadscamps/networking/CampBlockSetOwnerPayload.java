@@ -9,7 +9,7 @@ import net.minecraft.util.math.BlockPos;
 
 public record CampBlockSetOwnerPayload(BlockPos suppliesPos) implements CustomPayload {
     public static final Identifier SET_CAMP_BLOCK_OWNER = Identifier.of(NomadsCamps.MOD_ID, "set_supplies_owner");
-    public static final CustomPayload.Id<CampBlockSetOwnerPayload> ID = new CustomPayload.Id(SET_CAMP_BLOCK_OWNER);
+    public static final CustomPayload.Id<CampBlockSetOwnerPayload> ID = new CustomPayload.Id<>(SET_CAMP_BLOCK_OWNER);
     public static final PacketCodec<RegistryByteBuf, CampBlockSetOwnerPayload> CODEC = PacketCodec.of(
             (value, buf) -> {
                 buf.writeBlockPos(value.suppliesPos);

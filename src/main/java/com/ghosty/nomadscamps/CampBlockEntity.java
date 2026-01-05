@@ -10,6 +10,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.structure.StructurePlacementData;
 import net.minecraft.structure.StructureTemplate;
 import net.minecraft.structure.StructureTemplateManager;
 import net.minecraft.text.Text;
@@ -24,8 +25,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 public class CampBlockEntity extends BlockEntity {
-    private final UUID DEFAULTUUID = UUID.fromString("ab63890e-685f-4ccd-b319-1b62d2d39444");
-    private UUID uuid = DEFAULTUUID;
+    //private final UUID DEFAULTUUID = UUID.fromString("ab63890e-685f-4ccd-b319-1b62d2d39444");
+    private UUID uuid = null;
 
 
     //Constructor
@@ -40,16 +41,16 @@ public class CampBlockEntity extends BlockEntity {
             if(ownedBy(player)) {
                 //Send a packet to the client to open the camp supplies GUI
                 ServerPlayNetworking.send(serverPlayer, new CampSuppliesGUIPayload(this.pos, false));
-            } else if(findOwner() == null) {
+            } else if(uuid == null) {
                 ServerPlayNetworking.send(serverPlayer, new CampSuppliesGUIPayload(this.pos, true));
             } else {
-                serverPlayer.sendMessage(Text.of("These supplies are owned by: " + findOwner().getNameForScoreboard()), true);
+                serverPlayer.sendMessage(Text.of("These supplies are owned by: " + getOwnerName()), true);
             }
         }
     }
 
     public boolean setOwner(PlayerEntity player) {
-        if(uuid == DEFAULTUUID) {
+        if(uuid == null) {
             uuid = player.getUuid();
             return true;
         }
@@ -57,20 +58,20 @@ public class CampBlockEntity extends BlockEntity {
     }
 
     public boolean ownedBy(PlayerEntity player) {
+        if(uuid == null) return false;
         return uuid.equals(player.getUuid());
     }
 
-    public PlayerEntity findOwner() {
+    public String getOwnerName() {
         try {
-            return world.getPlayerByUuid(uuid);
+            return world.getPlayerByUuid(uuid).getNameForScoreboard();
         } catch(NullPointerException e) {
-            return null;
+            return "An Offline Player";
         }
     }
 
     //Functionality related to saving/placing structures
     private boolean ableToSave = true;
-    //private String structureName;
     private Identifier templateName;
 
     public boolean saveStructure(@Nullable Identifier structureName, BlockPos origin, Vec3d structureSize) {
@@ -109,6 +110,15 @@ public class CampBlockEntity extends BlockEntity {
         }
     }
 
+    public boolean placeStructure(ServerWorld world, StructureTemplate template/*, BlockPos origin/offset, BlockPos pivot*/) {
+        StructurePlacementData structurePlacementData = (new StructurePlacementData())/*.setMirror(this.mirror).setRotation(this.rotation).setIgnoreEntities(this.ignoreEntities)*/;
+
+        //BlockPos origin = this.getPos().add(offset);
+        template.place(world, this.getPos().add(0, 1, 0), new BlockPos(0, 0, 0), structurePlacementData, null, 2);
+
+        return true;
+    }
+
     public void setTemplateName(@Nullable String templateName) {
         this.setTemplateName(StringHelper.isEmpty(templateName) ? null : Identifier.tryParse(templateName));
     }
@@ -132,15 +142,15 @@ public class CampBlockEntity extends BlockEntity {
     public void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
         //BlockEntity is an abstract class, so this shouldn't be necessary
         //but if something breaks, uncomment it.
-        //super.writeNbt(nbt, registries);
-        nbt.putUuid("uuid", uuid);
+        super.writeNbt(nbt, registries);
+        if(uuid != null)
+            nbt.putUuid("uuid", uuid);
     }
-
 
     @Override
     public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
         //super.readNbt(nbt, registries);
-        if(nbt.containsUuid("uuid")) uuid = nbt.getUuid("uuid");
+        if(nbt.contains("uuid")) uuid = nbt.getUuid("uuid");
     }
 
 

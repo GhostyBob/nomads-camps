@@ -1,24 +1,19 @@
 package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.*;
-import com.ghosty.nomadscamps.util.IEntityDataSaver;
-import com.ghosty.nomadscamps.util.SuppliesData;
 import net.fabricmc.api.ModInitializer;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.structure.StructureTemplate;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -31,7 +26,7 @@ public class NomadsCamps implements ModInitializer {
 	// This logger is used to write text to the console and the log file.
 	// It is considered best practice to use your mod id as the logger's name.
 	// That way, it's clear which mod wrote info, warnings, and errors.
-	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
     Path structureDirectory;
 
@@ -75,7 +70,7 @@ public class NomadsCamps implements ModInitializer {
                         if(!supplies.saveStructure(payload.structName(), payload.origin(), payload.size()))
                             System.out.println("Structure failed to save");
                     } else {
-                        //TODO add dimension/world checking. Might be handled by sender.getWorld()
+                        //TODO add dimension/world checking. Might already be handled by sender.getWorld()
                         throw(new NullPointerException("Given location does not contain camp supplies! [SAV]"));
                     }
                 });
@@ -86,9 +81,8 @@ public class NomadsCamps implements ModInitializer {
                             .getSavePath(WorldSavePath.GENERATED)
                             .resolve(MOD_ID)
                             //TODO reimplement each player having their own structure directory
-                            //.resolve(context.player().getNameForScoreboard())
+                            //.resolve(context.player().getNameForScoreboard().toLowerCase());
                             .resolve("structures");
-
                     getKnownStructuresFromFile(context.player());
                 });
 	}
@@ -96,11 +90,11 @@ public class NomadsCamps implements ModInitializer {
     public void getKnownStructuresFromFile(ServerPlayerEntity player) {
         try(Stream<Path> files = Files.list(structureDirectory)) {
             List<Path> list = files.filter(Files::isRegularFile).toList();
-            ArrayList<String> names = new ArrayList<>();
+            ArrayList<String> structures = new ArrayList<>();
             for(Path file : list) {
-                names.add(file.subpath(file.getNameCount() - 1, file.getNameCount()).toString());
+                structures.add(file.subpath(file.getNameCount() - 1, file.getNameCount()).toString());
             }
-            ServerPlayNetworking.send(player, new ReturnStructuresPayload(names));
+            ServerPlayNetworking.send(player, new ReturnStructuresPayload(structures));
         } catch(IOException e) {
             //IDK man
         }
