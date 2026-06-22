@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import org.slf4j.Logger;
@@ -40,8 +41,9 @@ public class NomadsCamps implements ModInitializer {
 
         //Networking
         PayloadTypeRegistry.playS2C().register(CampSuppliesGUIPayload.ID, CampSuppliesGUIPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(CampBlockSavePayload.ID, CampBlockSavePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CampBlockSetOwnerPayload.ID, CampBlockSetOwnerPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(CampBlockSavePayload.ID, CampBlockSavePayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(CampBlockBuildPayload.ID, CampBlockBuildPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(QueryStructuresPayload.ID, QueryStructuresPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(ReturnStructuresPayload.ID, ReturnStructuresPayload.CODEC);
 
@@ -71,6 +73,21 @@ public class NomadsCamps implements ModInitializer {
                     } else {
                         //TODO add dimension/world checking. Might already be handled by sender.getWorld()
                         throw(new NullPointerException("Given location does not contain camp supplies! [SAV]"));
+                    }
+                });
+
+        ServerPlayNetworking.registerGlobalReceiver(CampBlockBuildPayload.ID,
+                (payload, context) -> {
+                    ServerPlayerEntity sender = context.player();
+                    BlockPos suppliesPos = payload.suppliesPos();
+                    BlockEntity maybeSupplies = sender.getWorld().getBlockEntity(suppliesPos);
+
+                    if(maybeSupplies instanceof CampBlockEntity supplies) {
+                        if(!supplies.placeStructure((ServerWorld) sender.getWorld(), payload.structureName(), payload.origin()))
+                            System.out.println("Structure failed to save");
+                    } else {
+                        //TODO add dimension/world checking. Might already be handled by sender.getWorld()
+                        throw(new NullPointerException("Given location does not contain camp supplies! [BLD]"));
                     }
                 });
 

@@ -28,7 +28,6 @@ public class CampBlockEntity extends BlockEntity {
     //private final UUID DEFAULTUUID = UUID.fromString("ab63890e-685f-4ccd-b319-1b62d2d39444");
     private UUID uuid = null;
 
-
     //Constructor
     public CampBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
@@ -110,12 +109,21 @@ public class CampBlockEntity extends BlockEntity {
         }
     }
 
-    public boolean placeStructure(ServerWorld world, StructureTemplate template/*, BlockPos origin/offset, BlockPos pivot*/) {
+    public boolean placeStructure(ServerWorld world, Identifier structureName, BlockPos origin) {
+        // Get a StructureTemplate, given the name of a structure
+        StructureTemplate template;
+        StructureTemplateManager templateManager = world.getStructureTemplateManager();
+        try {
+            template = templateManager.getTemplateOrBlank(structureName);
+        } catch (InvalidIdentifierException e) {
+            return false;
+        }
+
+        // Place the template
         StructurePlacementData structurePlacementData = (new StructurePlacementData())/*.setMirror(this.mirror).setRotation(this.rotation).setIgnoreEntities(this.ignoreEntities)*/;
+        template.place(world, origin, new BlockPos(0, 0, 0), structurePlacementData, null, 2);
 
-        //BlockPos origin = this.getPos().add(offset);
-        template.place(world, this.getPos().add(0, 1, 0), new BlockPos(0, 0, 0), structurePlacementData, null, 2);
-
+        System.out.println("Successfully placed " + structureName);
         return true;
     }
 

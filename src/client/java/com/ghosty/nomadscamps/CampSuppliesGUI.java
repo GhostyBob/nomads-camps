@@ -1,5 +1,6 @@
 package com.ghosty.nomadscamps;
 
+import com.ghosty.nomadscamps.networking.CampBlockBuildPayload;
 import com.ghosty.nomadscamps.networking.CampBlockSavePayload;
 import com.ghosty.nomadscamps.networking.CampBlockSetOwnerPayload;
 import com.ghosty.nomadscamps.networking.QueryStructuresPayload;
@@ -26,6 +27,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import org.jetbrains.annotations.Nullable;
 
+import javax.swing.plaf.synth.Region;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,6 +87,9 @@ public class CampSuppliesGUI extends Screen {
                 break;
             case "claim":
                 openClaimScreen();
+                break;
+            case "structurePlacerTemp":
+                openStructurePlacerTEMP();
                 break;
             default:
                 close();
@@ -167,9 +172,77 @@ public class CampSuppliesGUI extends Screen {
                 Text.of("Structure Name")
         );
 
+        // TODO replace these temp text fields with bounding box system
+        // region TEMP INPUT FIELDS
+        TextFieldWidget xField = new TextFieldWidget(textRenderer,
+                (super.width / 2) - 60,
+                (super.height / 2) - (backgroundHeight / 4) + 20,
+                40,
+                20,
+                Text.of("X")
+        );
+        TextFieldWidget yField = new TextFieldWidget(textRenderer,
+                (super.width / 2) - 10,
+                (super.height / 2) - (backgroundHeight / 4) + 20,
+                40,
+                20,
+                Text.of("Y")
+        );
+        TextFieldWidget zField = new TextFieldWidget(textRenderer,
+                (super.width / 2) + 40,
+                (super.height / 2) - (backgroundHeight / 4) + 20,
+                40,
+                20,
+                Text.of("Z")
+        );
+
+        TextFieldWidget lengthField = new TextFieldWidget(textRenderer,
+                (super.width / 2) - 60,
+                (super.height / 2) - (backgroundHeight / 4) + 50,
+                40,
+                20,
+                Text.of("dX")
+        );
+        TextFieldWidget heightField = new TextFieldWidget(textRenderer,
+                (super.width / 2) - 10,
+                (super.height / 2) - (backgroundHeight / 4) + 50,
+                40,
+                20,
+                Text.of("dY")
+        );
+        TextFieldWidget widthField = new TextFieldWidget(textRenderer,
+                (super.width / 2) + 40,
+                (super.height / 2) - (backgroundHeight / 4) + 50,
+                40,
+                20,
+                Text.of("dZ")
+        );
+
+        this.addDrawableChild(xField);
+        this.addDrawableChild(yField);
+        this.addDrawableChild(zField);
+        this.addDrawableChild(lengthField);
+        this.addDrawableChild(heightField);
+        this.addDrawableChild(widthField);
+        // endregion TEMP INPUT FIELDS
+
         ButtonWidget saveButton = ButtonWidget.builder(Text.of("Save"), (btn) -> {
-            //TODO implement button func
-            sendSavePacket(pos, Identifier.of(NomadsCamps.MOD_ID, /*MinecraftClient.getInstance().player.getNameForScoreboard().toLowerCase() + "/" + */nameField.getText().toLowerCase()), new BlockPos(0, -60, 0), new Vec3i(3, 3, 3));
+            //TODO refactor the BlockPos and Vec3i to use the new bounding box system
+            //TODO reimplement each player having their own directory
+            sendSavePacket(
+                    pos,
+                    Identifier.of(
+                            NomadsCamps.MOD_ID,
+                            /*MinecraftClient.getInstance().player.getNameForScoreboard().toLowerCase() +
+                            "/" + */nameField.getText().toLowerCase()),
+                    new BlockPos(
+                            Integer.parseInt(xField.getText()),
+                            Integer.parseInt(yField.getText()),
+                            Integer.parseInt(zField.getText())),
+                    new Vec3i(
+                            Integer.parseInt(lengthField.getText()),
+                            Integer.parseInt(heightField.getText()),
+                            Integer.parseInt(widthField.getText())));
         }).dimensions(
                 (super.width / 2) - (backgroundWidth / 4) - 30,
                 (super.height / 2) + (backgroundHeight / 4) - 10,
@@ -191,8 +264,63 @@ public class CampSuppliesGUI extends Screen {
         this.addDrawableChild(nameField);
     }
 
-    protected void startPlacingStructure(String structureName)
-    {
+    private void openStructurePlacerTEMP() {
+
+        TextFieldWidget xField = new TextFieldWidget(textRenderer,
+                (super.width / 2) - 70,
+                (super.height / 2) - (backgroundHeight / 4) + 20,
+                40,
+                20,
+                Text.of("X")
+        );
+        TextFieldWidget yField = new TextFieldWidget(textRenderer,
+                (super.width / 2) - 20,
+                (super.height / 2) - (backgroundHeight / 4) + 20,
+                40,
+                20,
+                Text.of("Y")
+        );
+        TextFieldWidget zField = new TextFieldWidget(textRenderer,
+                (super.width / 2) + 30,
+                (super.height / 2) - (backgroundHeight / 4) + 20,
+                40,
+                20,
+                Text.of("Z")
+        );
+
+
+        ButtonWidget placeButton = ButtonWidget.builder(Text.of("Place"), (btn) -> {
+            sendBuildPacket(
+                    pos,
+                    Identifier.of(
+                            NomadsCamps.MOD_ID,
+                            /*MinecraftClient.getInstance().player.getNameForScoreboard().toLowerCase() +
+                            "/" + */currentlyPlacingStructureName),
+                    new BlockPos(new Vec3i(
+                            Integer.parseInt(xField.getText()),
+                            Integer.parseInt(yField.getText()),
+                            Integer.parseInt(zField.getText()))));
+            switchScreen("empty", null);
+                }
+        ).dimensions(
+                (super.width / 2) - 30,
+                (super.height / 2) + (backgroundHeight / 4) - 10,
+                60,
+                20
+        ).build();
+
+        this.addDrawableChild(xField);
+        this.addDrawableChild(yField);
+        this.addDrawableChild(zField);
+        this.addDrawableChild(placeButton);
+    }
+
+    /// Temp!
+    private static String currentlyPlacingStructureName;
+
+    protected void startPlacingStructure(String structureName) {
+        currentlyPlacingStructureName = structureName;
+        switchScreen("structurePlacerTemp", this);
         // Close the gui, but remember the page to start on for next time the player opens it
         // Display some kind of hologram anchored to the block the player is facing
         // When the player right clicks, check to see if the current position is valid
@@ -251,13 +379,18 @@ public class CampSuppliesGUI extends Screen {
         context.drawTexture(BACKGROUND_TEXTURE, i, j, 0, 0.0F, 0.0F, this.backgroundWidth, this.backgroundHeight, 256, 256);
     }
 
+    private boolean sendOwnershipPacket() {
+        ClientPlayNetworking.send(new CampBlockSetOwnerPayload(pos));
+        return true;
+    }
+
     private boolean sendSavePacket(BlockPos suppliesPos, Identifier structureName, BlockPos origin, Vec3i size) {
         ClientPlayNetworking.send(new CampBlockSavePayload(suppliesPos, structureName, origin, Vec3d.of(size)));
         return true;
     }
 
-    private boolean sendOwnershipPacket() {
-        ClientPlayNetworking.send(new CampBlockSetOwnerPayload(pos));
+    private boolean sendBuildPacket(BlockPos suppliesPos, Identifier structureName, BlockPos origin) {
+        ClientPlayNetworking.send(new CampBlockBuildPayload(suppliesPos, structureName, origin));
         return true;
     }
 
@@ -307,7 +440,7 @@ public class CampSuppliesGUI extends Screen {
             private int x;
 
             //Icon?
-            private String name;
+            private final String name;
             private ButtonWidget nameButton;
             //Edit button?
 
@@ -317,8 +450,8 @@ public class CampSuppliesGUI extends Screen {
                 this.name = structureName;
                 this.x = x;
 
-                nameButton = ButtonWidget.builder(Text.of(structureName), (btn) -> {
-                    parentGui.startPlacingStructure(structureName);
+                nameButton = ButtonWidget.builder(Text.of(name), (btn) -> {
+                    parentGui.startPlacingStructure(name);
                 }).dimensions(0, 0, width, height).build();
                 children.add(nameButton);
 
