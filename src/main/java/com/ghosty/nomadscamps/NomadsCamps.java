@@ -7,7 +7,6 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.structure.StructureTemplate;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import org.slf4j.Logger;
@@ -90,11 +89,11 @@ public class NomadsCamps implements ModInitializer {
     public void getKnownStructuresFromFile(ServerPlayerEntity player) {
         try(Stream<Path> files = Files.list(structureDirectory)) {
             List<Path> list = files.filter(Files::isRegularFile).toList();
-            ArrayList<String> structures = new ArrayList<>();
+            ArrayList<String> structureNames = new ArrayList<>();
             for(Path file : list) {
-                structures.add(file.subpath(file.getNameCount() - 1, file.getNameCount()).toString());
+                structureNames.add(file.subpath(file.getNameCount() - 1, file.getNameCount()).toString());
             }
-            ServerPlayNetworking.send(player, new ReturnStructuresPayload(structures));
+            ServerPlayNetworking.send(player, new ReturnStructuresPayload(structureNames));
         } catch(IOException e) {
             //IDK man
         }

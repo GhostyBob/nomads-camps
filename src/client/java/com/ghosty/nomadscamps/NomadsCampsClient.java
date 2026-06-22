@@ -21,6 +21,7 @@ public class NomadsCampsClient implements ClientModInitializer {
             MinecraftClient.getInstance().setScreen(gui);
         });
 
+        //How to handle the payload telling the client the names of its registered structures
         ClientPlayNetworking.registerGlobalReceiver(ReturnStructuresPayload.ID, (payload, context) -> {
             context.client().execute(() -> {
                 if(context.client().currentScreen instanceof CampSuppliesGUI gui) {

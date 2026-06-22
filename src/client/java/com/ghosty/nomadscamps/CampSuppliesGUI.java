@@ -33,21 +33,35 @@ import java.util.Locale;
 import java.util.UUID;
 
 public class CampSuppliesGUI extends Screen {
+    /// A reference to the last visited screen
     public Screen prevScreen = null;
+    /// The name of the current GUI screen.
     public String address;
-    public static ArrayList<String> savedStructures;
-    private TextWidget structureListLoadingText;
-    private static final Identifier BACKGROUND_TEXTURE = Identifier.ofVanilla("textures/gui/demo_background.png");
-    private int backgroundWidth = 248;
-    private int backgroundHeight = 166;
+    /// The world position of the camp supplies that opened this GUI.
     public BlockPos pos;
+    ///  A list of structure names registered to the player.
+    public /*static*/ArrayList<String> savedStructures;
+    ///  A placeholder element to display while waiting for savedStructures.
+    private TextWidget structureListLoadingText;
+
+    // Some constants used for the look of the menu.
+    private static final Identifier BACKGROUND_TEXTURE = Identifier.ofVanilla("textures/gui/demo_background.png");
+    private final int backgroundWidth = 248;
+    private final int backgroundHeight = 166;
     //demo_background.png is 248x166px
+
+    // Flags to stop the screen from blurring and the world from pausing.
+    @Override
+    public boolean shouldPause() {return false;}
+    @Override
+    protected void applyBlur(float delta) {}
+
+    // Constructors
     public CampSuppliesGUI(String title, BlockPos passedPos) {
         super(Text.of(title));
         address = title;
         pos = passedPos;
     }
-
     public CampSuppliesGUI(String title, Screen prev, BlockPos passedPos) {
         super(Text.of(title));
         address = title;
@@ -55,6 +69,8 @@ public class CampSuppliesGUI extends Screen {
         pos = passedPos;
     }
 
+
+    // Methods
     @Override
     public void init() {
         switch(address) {
@@ -74,12 +90,6 @@ public class CampSuppliesGUI extends Screen {
                 close();
         }
     }
-
-    //Don't pause or blur the screen
-    @Override
-    public boolean shouldPause() {return false;}
-    @Override
-    protected void applyBlur(float delta) {}
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
@@ -181,6 +191,16 @@ public class CampSuppliesGUI extends Screen {
         this.addDrawableChild(nameField);
     }
 
+    protected void startPlacingStructure(String structureName)
+    {
+        // Close the gui, but remember the page to start on for next time the player opens it
+        // Display some kind of hologram anchored to the block the player is facing
+        // When the player right clicks, check to see if the current position is valid
+            // If it is, place the structure, then exit the "placing state"
+            // If it isn't, do nothing
+        // If the player ever presses escape, exit the "placing state"
+    }
+
     private void openClaimScreen() {
         //TODO make this screen prettier
         ButtonWidget claimOwnershipButton = ButtonWidget.builder(Text.of("Claim Ownership"), (btn) -> {
@@ -206,7 +226,8 @@ public class CampSuppliesGUI extends Screen {
                     backgroundWidth / 2,
                     backgroundHeight - 10,
                     (super.width / 2 - backgroundWidth / 2) + 5,
-                    (super.height / 2 - backgroundHeight / 2) + 5
+                    (super.height / 2 - backgroundHeight / 2) + 5,
+                    this
             );
             this.addDrawableChild(structureList);
             this.remove(structureListLoadingText);
@@ -242,16 +263,19 @@ public class CampSuppliesGUI extends Screen {
 
 
     //-----------------------------------------------------------------------------------\\
-
+    // Inner class to display the structure list
     class structureListWidget extends ElementListWidget<structureListWidget.structureEntry> {
-        structureListWidget(MinecraftClient client, int width, int height, int x, int y) {
+        private final CampSuppliesGUI parentGui;
+
+        structureListWidget(MinecraftClient client, int width, int height, int x, int y, CampSuppliesGUI gui) {
             super(client, width + 4, height, y, 40);
             this.setX(x);
+            parentGui = gui;
 
             Collator collator = Collator.getInstance(Locale.getDefault()); //What is this??? Its something used to sort the entries
 
             //Add entries to the list using this.addEntry(theEntryToAdd)
-            for(String s : CampSuppliesGUI.savedStructures) {
+            for(String s : parentGui.savedStructures) {
                 this.addEntry(new structureEntry(s, width - 8, 40, this.getX()));
             }
         }
@@ -294,7 +318,7 @@ public class CampSuppliesGUI extends Screen {
                 this.x = x;
 
                 nameButton = ButtonWidget.builder(Text.of(structureName), (btn) -> {
-                    //Whatever the button will do
+                    parentGui.startPlacingStructure(structureName);
                 }).dimensions(0, 0, width, height).build();
                 children.add(nameButton);
 
