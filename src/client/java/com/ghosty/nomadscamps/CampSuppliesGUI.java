@@ -35,6 +35,8 @@ import java.util.Locale;
 import java.util.UUID;
 
 public class CampSuppliesGUI extends Screen {
+
+    // region FIELDS
     /// A reference to the last visited screen
     public Screen prevScreen = null;
     /// The name of the current GUI screen.
@@ -57,8 +59,9 @@ public class CampSuppliesGUI extends Screen {
     public boolean shouldPause() {return false;}
     @Override
     protected void applyBlur(float delta) {}
+    // endregion FIELDS
 
-    // Constructors
+    // region CONSTRUCTORS
     public CampSuppliesGUI(String title, BlockPos passedPos) {
         super(Text.of(title));
         address = title;
@@ -70,9 +73,9 @@ public class CampSuppliesGUI extends Screen {
         prevScreen = prev;
         pos = passedPos;
     }
+    // endregion CONSTRUCTORS
 
-
-    // Methods
+    // region PUBLIC METHODS
     @Override
     public void init() {
         switch(address) {
@@ -102,6 +105,11 @@ public class CampSuppliesGUI extends Screen {
         super.render(context, mouseX, mouseY, delta);
     }
 
+    @Override
+    public void close() {this.client.setScreen(prevScreen);}
+    // endregion PUBLIC METHODS
+
+    // region PAGE LAYOUTS
     private void openHome() {
         ButtonWidget closeButton = ButtonWidget.builder(Text.of("Close"), (btn) -> {
             this.close();
@@ -345,7 +353,25 @@ public class CampSuppliesGUI extends Screen {
 
         this.addDrawableChild(claimOwnershipButton);
     }
+    //endregion PAGE LAYOUTS
 
+    // region HELPER METHODS
+    protected void switchScreen(String title, @Nullable Screen parent) {
+        if(parent == null) {
+            this.client.setScreen((new CampSuppliesGUI(title, pos)));
+        } else {
+            this.client.setScreen(new CampSuppliesGUI(title, parent, pos));
+        }
+    }
+
+    protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
+        int i = (this.width - this.backgroundWidth) / 2;
+        int j = (this.height - this.backgroundHeight) / 2;
+        context.drawTexture(BACKGROUND_TEXTURE, i, j, 0, 0.0F, 0.0F, this.backgroundWidth, this.backgroundHeight, 256, 256);
+    }
+    // endregion HELPER METHODS
+
+    // region NETWORKING
     public void receiveStructures(ArrayList<String> names) {
         savedStructures = names;
 
@@ -362,23 +388,6 @@ public class CampSuppliesGUI extends Screen {
         }
     }
 
-    @Override
-    public void close() {this.client.setScreen(prevScreen);}
-
-    protected void switchScreen(String title, @Nullable Screen parent) {
-        if(parent == null) {
-            this.client.setScreen((new CampSuppliesGUI(title, pos)));
-        } else {
-            this.client.setScreen(new CampSuppliesGUI(title, parent, pos));
-        }
-    }
-
-    protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-        int i = (this.width - this.backgroundWidth) / 2;
-        int j = (this.height - this.backgroundHeight) / 2;
-        context.drawTexture(BACKGROUND_TEXTURE, i, j, 0, 0.0F, 0.0F, this.backgroundWidth, this.backgroundHeight, 256, 256);
-    }
-
     private boolean sendOwnershipPacket() {
         ClientPlayNetworking.send(new CampBlockSetOwnerPayload(pos));
         return true;
@@ -393,13 +402,13 @@ public class CampSuppliesGUI extends Screen {
         ClientPlayNetworking.send(new CampBlockBuildPayload(suppliesPos, structureName, origin));
         return true;
     }
+    // endregion NETWORKING
 
-
-    //-----------------------------------------------------------------------------------\\
     // Inner class to display the structure list
     class structureListWidget extends ElementListWidget<structureListWidget.structureEntry> {
         private final CampSuppliesGUI parentGui;
 
+        // Constructor
         structureListWidget(MinecraftClient client, int width, int height, int x, int y, CampSuppliesGUI gui) {
             super(client, width + 4, height, y, 40);
             this.setX(x);
@@ -413,6 +422,7 @@ public class CampSuppliesGUI extends Screen {
             }
         }
 
+        // region METHODS
         public void setSelected(@Nullable structureEntry passedEntry) {
             super.setSelected(passedEntry);
 
@@ -434,18 +444,24 @@ public class CampSuppliesGUI extends Screen {
         protected int getDefaultScrollbarX() {
             return this.getRowLeft() + this.getRowWidth() - 2;
         }
+        // endregion METHODS
 
-
+        // Inner inner class to represent an entry in the structure list
         class structureEntry extends ElementListWidget.Entry<structureEntry> {
+
+            // region FIELDS
             private int x;
 
+            // Elements in this entry
             //Icon?
             private final String name;
             private ButtonWidget nameButton;
             //Edit button?
 
             private ArrayList<ButtonWidget> children = new ArrayList<ButtonWidget>();
+            // endregion FIELDS
 
+            // Constructor
             public structureEntry(String structureName, int width, int height, int x) {
                 this.name = structureName;
                 this.x = x;
@@ -458,6 +474,7 @@ public class CampSuppliesGUI extends Screen {
                 //other buttons...
             }
 
+            // region METHODS
             public List<? extends Selectable> selectableChildren() {
                 return children;
             }
@@ -485,6 +502,7 @@ public class CampSuppliesGUI extends Screen {
                 structureListWidget.this.setSelected(this);
                 return super.mouseClicked(mouseX, mouseY, button);
             }
+            // endregion METHODS
         }
     }
 }

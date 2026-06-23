@@ -25,15 +25,18 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 public class CampBlockEntity extends BlockEntity {
-    //private final UUID DEFAULTUUID = UUID.fromString("ab63890e-685f-4ccd-b319-1b62d2d39444");
-    private UUID uuid = null;
 
     //Constructor
     public CampBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
     }
 
-    //Put custom block methods below
+    // region OWNERSHIP
+
+    //private final UUID DEFAULTUUID = UUID.fromString("ab63890e-685f-4ccd-b319-1b62d2d39444");
+    private UUID uuid = null;
+
+
     public void showGUI(PlayerEntity player) {
         //Get the relevant ServerPlayerEntity from the passed PlayerEntity
         if(player instanceof ServerPlayerEntity serverPlayer) {
@@ -69,15 +72,15 @@ public class CampBlockEntity extends BlockEntity {
         }
     }
 
-    //Functionality related to saving/placing structures
+    // endregion OWNERSHIP
+
+    // region STRUCTURES
     private boolean ableToSave = true;
-    private Identifier templateName;
 
     public boolean saveStructure(@Nullable Identifier structureName, BlockPos origin, Vec3d structureSize) {
         if(!ableToSave || structureName == null)
             return false;
         else {
-            setTemplateName(structureName);
 
             //convert structureSize to a Vec3i
             Vec3i structureSizeInt = new Vec3i(
@@ -92,7 +95,7 @@ public class CampBlockEntity extends BlockEntity {
             StructureTemplateManager templateManager = world.getStructureTemplateManager();
             StructureTemplate structureTemplate;
             try {
-                structureTemplate = templateManager.getTemplateOrBlank(templateName);
+                structureTemplate = templateManager.getTemplateOrBlank(structureName);
             } catch (InvalidIdentifierException e) {
                 return false;
             }
@@ -102,7 +105,7 @@ public class CampBlockEntity extends BlockEntity {
             //Save the template
             try {
                 System.out.println("Successfully saved " + structureName);
-                return templateManager.saveTemplate(templateName);
+                return templateManager.saveTemplate(structureName);
             } catch (InvalidIdentifierException e) {
                 return false;
             }
@@ -126,24 +129,9 @@ public class CampBlockEntity extends BlockEntity {
         System.out.println("Successfully placed " + structureName);
         return true;
     }
+    // endregion STRUCTURES
 
-    public void setTemplateName(@Nullable String templateName) {
-        this.setTemplateName(StringHelper.isEmpty(templateName) ? null : Identifier.tryParse(templateName));
-    }
-
-    public void setTemplateName(@Nullable Identifier templateName) {
-        this.templateName = templateName;
-    }
-
-    public static enum Action {
-        UPDATE_DATA,
-        SAVE_AREA,
-        LOAD_AREA,
-        SCAN_AREA;
-        //etc...
-    }
-
-    //Functionality related to persistent data
+    // region DATA SAVING
     public UUID getUuid() { return uuid; }
 
     @Override
@@ -160,6 +148,5 @@ public class CampBlockEntity extends BlockEntity {
         //super.readNbt(nbt, registries);
         if(nbt.contains("uuid")) uuid = nbt.getUuid("uuid");
     }
-
-
+    // endregion DATA SAVING
 }

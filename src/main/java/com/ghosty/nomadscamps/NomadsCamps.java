@@ -21,14 +21,15 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public class NomadsCamps implements ModInitializer {
-	public static final String MOD_ID = "nomads-camps";
+    public static final String MOD_ID = "nomads-camps";
 
 	// This logger is used to write text to the console and the log file.
 	// It is considered best practice to use your mod id as the logger's name.
 	// That way, it's clear which mod wrote info, warnings, and errors.
+    // TODO replace sysout printlns with logger writes
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-    Path structureDirectory;
+    private Path structureDirectory;
 
 	@Override
 	public void onInitialize() {
@@ -39,7 +40,7 @@ public class NomadsCamps implements ModInitializer {
         ModBlocks.initialize();
         ModBlockEntities.initialize();
 
-        //Networking
+        // region NETWORKING
         PayloadTypeRegistry.playS2C().register(CampSuppliesGUIPayload.ID, CampSuppliesGUIPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CampBlockSetOwnerPayload.ID, CampBlockSetOwnerPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CampBlockSavePayload.ID, CampBlockSavePayload.CODEC);
@@ -101,8 +102,10 @@ public class NomadsCamps implements ModInitializer {
                             .resolve("structures");
                     getKnownStructuresFromFile(context.player());
                 });
+        // endregion NETWORKING
 	}
 
+    // region HELPER METHODS
     public void getKnownStructuresFromFile(ServerPlayerEntity player) {
         try(Stream<Path> files = Files.list(structureDirectory)) {
             List<Path> list = files.filter(Files::isRegularFile).toList();
@@ -115,4 +118,5 @@ public class NomadsCamps implements ModInitializer {
             //IDK man
         }
     }
+    // endregion HELPER METHODS
 }

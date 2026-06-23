@@ -26,10 +26,12 @@ public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
 
     public static final MapCodec<CampBlock> CODEC = CampBlock.createCodec(CampBlock::new);
 
+    // Constructor
     public CampBlock(Settings settings) {
         super(settings);
     }
 
+    // region METHODS
     @Override
     protected VoxelShape getOutlineShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
         return SHAPE;
@@ -87,4 +89,5 @@ public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
             }
         }
     }
+    // endregion METHODS
 }
