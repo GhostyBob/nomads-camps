@@ -85,7 +85,7 @@ public class NomadsCamps implements ModInitializer {
 
                     if(maybeSupplies instanceof CampBlockEntity supplies) {
                         if(!supplies.placeStructure((ServerWorld) sender.getWorld(), payload.structureName(), payload.origin()))
-                            System.out.println("Structure failed to save");
+                            System.out.println("Structure failed to place");
                     } else {
                         //TODO add dimension/world checking. Might already be handled by sender.getWorld()
                         throw(new NullPointerException("Given location does not contain camp supplies! [BLD]"));

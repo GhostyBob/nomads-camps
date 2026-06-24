@@ -418,7 +418,9 @@ public class CampSuppliesGUI extends Screen {
 
             //Add entries to the list using this.addEntry(theEntryToAdd)
             for(String s : parentGui.savedStructures) {
-                this.addEntry(new structureEntry(s, width - 8, 40, this.getX()));
+                //Cut off the end of the string so the file extension (.nbt) isn't included
+                String structureName = s.substring(0, s.length() - 4);
+                this.addEntry(new structureEntry(structureName, width - 8, 40, this.getX()));
             }
         }
 

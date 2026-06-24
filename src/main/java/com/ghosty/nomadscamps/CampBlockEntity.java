@@ -124,10 +124,18 @@ public class CampBlockEntity extends BlockEntity {
 
         // Place the template
         StructurePlacementData structurePlacementData = (new StructurePlacementData())/*.setMirror(this.mirror).setRotation(this.rotation).setIgnoreEntities(this.ignoreEntities)*/;
-        template.place(world, origin, new BlockPos(0, 0, 0), structurePlacementData, null, 2);
 
-        System.out.println("Successfully placed " + structureName);
-        return true;
+        boolean result = template.place(
+                world,
+                origin,
+                new BlockPos(0, 0, 0),
+                structurePlacementData,
+                null,
+                2);
+
+        System.out.println(result ? "Successfully placed " : "Failed to place " + structureName);
+
+        return result;
     }
     // endregion STRUCTURES
 
