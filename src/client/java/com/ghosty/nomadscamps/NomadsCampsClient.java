@@ -5,12 +5,18 @@ import com.ghosty.nomadscamps.networking.ReturnStructuresPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
+import net.minecraft.client.render.entity.EntityRenderers;
 import net.minecraft.structure.StructureTemplateManager;
 
 public class NomadsCampsClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		// This entrypoint is suitable for setting up client-specific logic, such as rendering.
+
+        // region RENDERING
+        BlockEntityRendererFactories.register(ModBlockEntities.CAMP_BLOCK_ENTITY, CampBlockEntityRenderer::new);
+        // endregion RENDERING
 
         // region NETWORKING
         ClientPlayNetworking.registerGlobalReceiver(CampSuppliesGUIPayload.ID, (payload, context) -> {

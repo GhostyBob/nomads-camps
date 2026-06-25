@@ -1,5 +1,5 @@
 package com.ghosty.nomadscamps;
-
+// TODO fill out the fabric.mod.json
 import com.ghosty.nomadscamps.networking.*;
 import net.fabricmc.api.ModInitializer;
 
