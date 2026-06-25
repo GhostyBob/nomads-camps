@@ -107,6 +107,8 @@ public class CampSuppliesGUI extends Screen {
 
     @Override
     public void close() {this.client.setScreen(prevScreen);}
+
+    public void forceClose() {this.client.setScreen(null);}
     // endregion PUBLIC METHODS
 
     // region PAGE LAYOUTS
@@ -136,6 +138,23 @@ public class CampSuppliesGUI extends Screen {
         //show/hide camp boundary?
         //view/manage upgrades
         //view/manage approved player access
+    }
+
+    private void openClaimScreen() {
+        //TODO make this screen prettier
+        ButtonWidget claimOwnershipButton = ButtonWidget.builder(Text.of("Claim Ownership"), (btn) -> {
+
+            sendOwnershipPacket();
+            forceClose();
+
+        }).dimensions(
+                (super.width / 2) - 60,
+                (super.height / 3) - 10,
+                120,
+                20
+        ).build();
+
+        this.addDrawableChild(claimOwnershipButton);
     }
 
     private void openStructureList() {
@@ -251,6 +270,7 @@ public class CampSuppliesGUI extends Screen {
                             Integer.parseInt(lengthField.getText()),
                             Integer.parseInt(heightField.getText()),
                             Integer.parseInt(widthField.getText())));
+            close();
         }).dimensions(
                 (super.width / 2) - (backgroundWidth / 4) - 30,
                 (super.height / 2) + (backgroundHeight / 4) - 10,
@@ -308,7 +328,7 @@ public class CampSuppliesGUI extends Screen {
                             Integer.parseInt(xField.getText()),
                             Integer.parseInt(yField.getText()),
                             Integer.parseInt(zField.getText()))));
-            switchScreen("empty", null);
+            forceClose();
                 }
         ).dimensions(
                 (super.width / 2) - 30,
@@ -335,23 +355,6 @@ public class CampSuppliesGUI extends Screen {
             // If it is, place the structure, then exit the "placing state"
             // If it isn't, do nothing
         // If the player ever presses escape, exit the "placing state"
-    }
-
-    private void openClaimScreen() {
-        //TODO make this screen prettier
-        ButtonWidget claimOwnershipButton = ButtonWidget.builder(Text.of("Claim Ownership"), (btn) -> {
-
-            sendOwnershipPacket();
-            this.close();
-
-        }).dimensions(
-                (super.width / 2) - 60,
-                (super.height / 3) - 10,
-                120,
-                20
-        ).build();
-
-        this.addDrawableChild(claimOwnershipButton);
     }
     //endregion PAGE LAYOUTS
 

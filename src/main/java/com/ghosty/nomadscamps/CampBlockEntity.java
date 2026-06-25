@@ -46,7 +46,7 @@ public class CampBlockEntity extends BlockEntity {
             } else if(uuid == null) {
                 ServerPlayNetworking.send(serverPlayer, new CampSuppliesGUIPayload(this.pos, true));
             } else {
-                serverPlayer.sendMessage(Text.of("These supplies are owned by: " + getOwnerName()), true);
+                serverPlayer.sendMessage(Text.of("These supplies are owned by " + getOwnerName()), true);
             }
         }
     }
@@ -68,7 +68,7 @@ public class CampBlockEntity extends BlockEntity {
         try {
             return world.getPlayerByUuid(uuid).getNameForScoreboard();
         } catch(NullPointerException e) {
-            return "An Offline Player";
+            return "an offline player";
         }
     }
 
