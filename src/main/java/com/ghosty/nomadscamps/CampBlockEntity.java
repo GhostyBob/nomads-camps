@@ -7,9 +7,6 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.listener.ClientPlayPacketListener;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -19,6 +16,7 @@ import net.minecraft.structure.StructureTemplateManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.InvalidIdentifierException;
+import net.minecraft.util.StringHelper;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
@@ -28,15 +26,9 @@ import java.util.UUID;
 
 public class CampBlockEntity extends BlockEntity {
 
-    // region FIELDS
-    private BlockPos pos;
-
-    // endregion FIELDS
-
     //Constructor
     public CampBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
-        this.pos = pos;
     }
 
     // region OWNERSHIP
@@ -133,33 +125,18 @@ public class CampBlockEntity extends BlockEntity {
         // Place the template
         StructurePlacementData structurePlacementData = (new StructurePlacementData())/*.setMirror(this.mirror).setRotation(this.rotation).setIgnoreEntities(this.ignoreEntities)*/;
 
-        startVertex = origin;
-        endVertex = origin.add(template.getSize());
+        boolean result = template.place(
+                world,
+                origin,
+                new BlockPos(0, 0, 0),
+                structurePlacementData,
+                null,
+                2);
 
-        markDirty();
+        System.out.println(result ? "Successfully placed " : "Failed to place " + structureName);
 
-//        boolean result = template.place(
-//                world,
-//                origin,
-//                new BlockPos(0, 0, 0),
-//                structurePlacementData,
-//                null,
-//                2);
-//
-//        System.out.println(result ? "Successfully placed " : "Failed to place " + structureName);
-//
-//        return result;
-
-        return true;
+        return result;
     }
-
-    private Vec3i startVertex = new Vec3i(7, -60, -9);
-    private Vec3i endVertex = new Vec3i(10, -57, -6);
-
-    public Vec3i getStartVertex() { return startVertex; }
-
-    public Vec3i getEndVertex() { return endVertex; }
-
     // endregion STRUCTURES
 
     // region DATA SAVING
@@ -180,28 +157,4 @@ public class CampBlockEntity extends BlockEntity {
         if(nbt.contains("uuid")) uuid = nbt.getUuid("uuid");
     }
     // endregion DATA SAVING
-
-    // region NETWORKING
-    public Packet<ClientPlayPacketListener> toUpdatePacket() {
-        return BlockEntityUpdateS2CPacket.create(this);
-    }
-
-    public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registryLookup) {
-        NbtCompound nbt = super.toInitialChunkDataNbt(registryLookup);
-        // Write in anything the renderer would need when the block is first loaded
-        // nbt.putType("key", value);
-        super.writeNbt(nbt, registryLookup);
-        return nbt;
-    }
-
-    @Override
-    public void markDirty()
-    {
-        super.markDirty();
-        if (this.world != null)
-        {
-            world.updateListeners(pos, this.world.getBlockState(pos), this.world.getBlockState(pos), CampBlock.NOTIFY_ALL_AND_REDRAW);
-        }
-    }
-    // endregion NETWORKING
 }
