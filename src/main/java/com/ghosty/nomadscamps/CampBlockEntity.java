@@ -7,6 +7,9 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.network.listener.ClientPlayPacketListener;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -26,15 +29,22 @@ import java.util.UUID;
 
 public class CampBlockEntity extends BlockEntity {
 
+    // region FIELDS
+    private BlockPos pos;
+
+    // endregion FIELDS
+
     //Constructor
     public CampBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
+        this.pos = pos;
     }
 
     // region OWNERSHIP
 
     //private final UUID DEFAULTUUID = UUID.fromString("ab63890e-685f-4ccd-b319-1b62d2d39444");
     private UUID uuid = null;
+    private String ownerName = null;
 
 
     public void showGUI(PlayerEntity player) {
@@ -54,6 +64,7 @@ public class CampBlockEntity extends BlockEntity {
     public boolean setOwner(PlayerEntity player) {
         if(uuid == null) {
             uuid = player.getUuid();
+            ownerName = player.getNameForScoreboard();
             return true;
         }
         return false;
@@ -66,9 +77,10 @@ public class CampBlockEntity extends BlockEntity {
 
     public String getOwnerName() {
         try {
-            return world.getPlayerByUuid(uuid).getNameForScoreboard();
+            return ownerName;
         } catch(NullPointerException e) {
-            return "an offline player";
+            return "Mr. Error.";
+            //return "an offline player";
         }
     }
 
@@ -125,18 +137,23 @@ public class CampBlockEntity extends BlockEntity {
         // Place the template
         StructurePlacementData structurePlacementData = (new StructurePlacementData())/*.setMirror(this.mirror).setRotation(this.rotation).setIgnoreEntities(this.ignoreEntities)*/;
 
-        boolean result = template.place(
-                world,
-                origin,
-                new BlockPos(0, 0, 0),
-                structurePlacementData,
-                null,
-                2);
+        markDirty();
 
-        System.out.println(result ? "Successfully placed " : "Failed to place " + structureName);
+//        boolean result = template.place(
+//                world,
+//                origin,
+//                new BlockPos(0, 0, 0),
+//                structurePlacementData,
+//                null,
+//                2);
+//
+//        System.out.println(result ? "Successfully placed " : "Failed to place " + structureName);
+//
+//        return result;
 
-        return result;
+        return true;
     }
+
     // endregion STRUCTURES
 
     // region DATA SAVING
@@ -149,12 +166,15 @@ public class CampBlockEntity extends BlockEntity {
         super.writeNbt(nbt, registries);
         if(uuid != null)
             nbt.putUuid("uuid", uuid);
+        if(ownerName != null)
+            nbt.putString("owner", ownerName);
     }
 
     @Override
     public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
         //super.readNbt(nbt, registries);
         if(nbt.contains("uuid")) uuid = nbt.getUuid("uuid");
+        if(nbt.contains("owner")) ownerName = nbt.getString("owner");
     }
     // endregion DATA SAVING
 }
