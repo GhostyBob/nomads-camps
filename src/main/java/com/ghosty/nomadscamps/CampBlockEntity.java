@@ -23,6 +23,7 @@ import net.minecraft.util.StringHelper;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
+import org.apache.commons.lang3.NotImplementedException;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -32,12 +33,21 @@ public class CampBlockEntity extends BlockEntity {
     // region FIELDS
     private BlockPos pos;
 
+    // TODO have these pull from the .config
+    private int numStructureSlots = 4;
+    private StructureSlot[] structureSlots;
     // endregion FIELDS
 
     //Constructor
     public CampBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
         this.pos = pos;
+        structureSlots = new StructureSlot[numStructureSlots];
+        populateStructureSlots();
+    }
+
+    private void populateStructureSlots() {
+        throw new NotImplementedException();
     }
 
     // region OWNERSHIP
@@ -137,21 +147,17 @@ public class CampBlockEntity extends BlockEntity {
         // Place the template
         StructurePlacementData structurePlacementData = (new StructurePlacementData())/*.setMirror(this.mirror).setRotation(this.rotation).setIgnoreEntities(this.ignoreEntities)*/;
 
-        markDirty();
+        boolean result = template.place(
+                world,
+                origin,
+                new BlockPos(0, 0, 0),
+                structurePlacementData,
+                null,
+                2);
 
-//        boolean result = template.place(
-//                world,
-//                origin,
-//                new BlockPos(0, 0, 0),
-//                structurePlacementData,
-//                null,
-//                2);
-//
-//        System.out.println(result ? "Successfully placed " : "Failed to place " + structureName);
-//
-//        return result;
+        System.out.println(result ? "Successfully placed " : "Failed to place " + structureName);
 
-        return true;
+        return result;
     }
 
     // endregion STRUCTURES

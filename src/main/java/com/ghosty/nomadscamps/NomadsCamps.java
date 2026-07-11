@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public class NomadsCamps implements ModInitializer {
+    // TODO fill out fabric.mod.json and README.md
     public static final String MOD_ID = "nomads-camps";
 
 	// This logger is used to write text to the console and the log file.
