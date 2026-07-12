@@ -14,11 +14,14 @@ public record ReturnStructuresPayload(ArrayList<String> names) implements Custom
     public static final CustomPayload.Id<ReturnStructuresPayload> ID = new CustomPayload.Id<>(RETURN_STRUCTURES_ID);
     public static final PacketCodec<RegistryByteBuf, ReturnStructuresPayload> CODEC = PacketCodec.of(
             (value, buf) -> {
+                // We have to write a bunch of strings into the packet manually
+                // since there's no buf.writeArrayList.
                 buf.writeVarInt(value.names().size());
                 for(String name : value.names()) {
                     buf.writeString(name);
                 }
             }, buf -> {
+                // That means we also have to build an ArrayList out ouf the individual strings
                 int size = buf.readVarInt();
                 ArrayList<String> returnedNames = new ArrayList<>();
                 for(int i = 0; i < size; i++) {

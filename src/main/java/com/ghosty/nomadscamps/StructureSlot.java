@@ -9,16 +9,16 @@ public class StructureSlot {
     // TODO also set up a .config file
 
     // region FIELDS
+    private final String structureName;
+
     @Nullable
     private BlockBox occupiedArea;
-
-    private boolean isPlaced;
 
     private final int sizeX;
     private final int sizeY;
     private final int sizeZ;
 
-    private final String structureName;
+    private boolean isPlaced;
 
     private final boolean captureEntities;
     // private List ignoredBlocks;
@@ -38,15 +38,27 @@ public class StructureSlot {
         captureEntities = false;
     }
 
-    public StructureSlot(String name, int size, boolean captureEntities) {
-        occupiedArea = null;
-        isPlaced = false;
-
+    public StructureSlot(String name, @Nullable BlockPos center, int sizeX, int sizeY, int sizeZ, boolean captureEntities) {
         structureName = name;
 
-        sizeX = size;
-        sizeY = size;
-        sizeZ = size;
+        isPlaced = center != null;
+        if (isPlaced) {
+            // TODO scrutinize these formulae a bit more
+            occupiedArea = new BlockBox(
+                    // min = center - ((size + 1) / 2)
+                    center.getX() - ((sizeX + 1) / 2),
+                    center.getY() - ((sizeY + 1) / 2),
+                    center.getZ() - ((sizeZ + 1) / 2),
+                    // max = center - ((3size + 1) / 2)
+                    center.getX() - ((sizeX + 1) / 2) + sizeX,
+                    center.getY() - ((sizeY + 1) / 2) + sizeY,
+                    center.getZ() - ((sizeZ + 1) / 2) + sizeZ
+                    );
+        } else occupiedArea = null;
+
+        this.sizeX = sizeX;
+        this.sizeY = sizeY;
+        this.sizeZ = sizeZ;
 
         this.captureEntities = captureEntities;
     }

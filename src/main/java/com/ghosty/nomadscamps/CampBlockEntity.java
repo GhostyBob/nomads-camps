@@ -26,6 +26,7 @@ import net.minecraft.util.math.Vec3i;
 import org.apache.commons.lang3.NotImplementedException;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.UUID;
 
 public class CampBlockEntity extends BlockEntity {
@@ -35,18 +36,20 @@ public class CampBlockEntity extends BlockEntity {
 
     // TODO have these pull from the .config
     private int numStructureSlots = 4;
-    private StructureSlot[] structureSlots;
+    private ArrayList<StructureSlot> structureSlots;
     // endregion FIELDS
 
     //Constructor
     public CampBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
         this.pos = pos;
-        structureSlots = new StructureSlot[numStructureSlots];
+        structureSlots = new ArrayList<>(numStructureSlots);
         populateStructureSlots();
     }
 
     private void populateStructureSlots() {
+        // Ask the server for a player's list of structures
+        // While this block is placed, it will have the structures stored in it for easy access.
         throw new NotImplementedException();
     }
 
@@ -183,4 +186,9 @@ public class CampBlockEntity extends BlockEntity {
         if(nbt.contains("owner")) ownerName = nbt.getString("owner");
     }
     // endregion DATA SAVING
+
+    // region GETTERS
+    public int getNumStructureSlots() { return numStructureSlots; }
+    public ArrayList <StructureSlot> getStructureSlots() { return structureSlots; }
+    // endregion GETTERS
 }

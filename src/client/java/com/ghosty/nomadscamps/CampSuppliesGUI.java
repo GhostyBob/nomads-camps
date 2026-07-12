@@ -176,7 +176,7 @@ public class CampSuppliesGUI extends Screen {
         ).build();
 
         //Fetch saved structures
-        ClientPlayNetworking.send(new QueryStructuresPayload());
+        ClientPlayNetworking.send(new QueryStructuresPayload(pos));
         structureListLoadingText = new TextWidget(
                 (super.height / 2 - backgroundHeight / 2) + 5,
                 (super.width / 2 - backgroundWidth / 2) + 5,
