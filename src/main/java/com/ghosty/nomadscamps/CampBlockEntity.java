@@ -20,12 +20,15 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.InvalidIdentifierException;
 import net.minecraft.util.StringHelper;
+import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import org.apache.commons.lang3.NotImplementedException;
 import org.jetbrains.annotations.Nullable;
+import oshi.annotation.concurrent.Immutable;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -44,13 +47,32 @@ public class CampBlockEntity extends BlockEntity {
         super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
         this.pos = pos;
         structureSlots = new ArrayList<>(numStructureSlots);
-        populateStructureSlots();
     }
 
     private void populateStructureSlots() {
-        // Ask the server for a player's list of structures
+        // Look in the files for a player's list of structures
         // While this block is placed, it will have the structures stored in it for easy access.
-        throw new NotImplementedException();
+        assert this.getWorld() != null;
+        assert this.getWorld().getServer() != null;
+        Path directory = this.getWorld().getServer()
+                .getSavePath(WorldSavePath.GENERATED)
+                .resolve(NomadsCamps.MOD_ID)
+                //.resolve(ownerName.toLowerCase())
+                .resolve("structures");
+
+        structureSlots = NomadsCamps.getStructureSlotsFromFile(directory);
+    }
+
+    private void writeStructureSlots() {
+        assert this.getWorld() != null;
+        assert this.getWorld().getServer() != null;
+        Path directory = this.getWorld().getServer()
+                .getSavePath(WorldSavePath.GENERATED)
+                .resolve(NomadsCamps.MOD_ID)
+                //.resolve(ownerName.toLowerCase())
+                .resolve("structures");
+
+        NomadsCamps.writeStructureSlotsToFile(directory, this);
     }
 
     // region OWNERSHIP
@@ -78,6 +100,7 @@ public class CampBlockEntity extends BlockEntity {
         if(uuid == null) {
             uuid = player.getUuid();
             ownerName = player.getNameForScoreboard();
+            populateStructureSlots();
             return true;
         }
         return false;
@@ -177,6 +200,10 @@ public class CampBlockEntity extends BlockEntity {
             nbt.putUuid("uuid", uuid);
         if(ownerName != null)
             nbt.putString("owner", ownerName);
+
+        //TODO this might cause performance issues since we don't need to write it every time
+        //TODO also the writeNbt method might not be called if the supplies are placed when the world is closed
+        writeStructureSlots();
     }
 
     @Override
@@ -184,6 +211,7 @@ public class CampBlockEntity extends BlockEntity {
         //super.readNbt(nbt, registries);
         if(nbt.contains("uuid")) uuid = nbt.getUuid("uuid");
         if(nbt.contains("owner")) ownerName = nbt.getString("owner");
+        populateStructureSlots();
     }
     // endregion DATA SAVING
 

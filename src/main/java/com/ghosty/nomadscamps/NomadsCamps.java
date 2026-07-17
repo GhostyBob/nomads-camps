@@ -1,7 +1,8 @@
 package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.*;
-import com.google.gson.JsonObject;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -11,11 +12,14 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.google.gson.Gson;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -49,6 +53,7 @@ public class NomadsCamps implements ModInitializer {
         PayloadTypeRegistry.playC2S().register(QueryStructuresPayload.ID, QueryStructuresPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(ReturnStructuresPayload.ID, ReturnStructuresPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(ReturnStructureSlotsPayload.ID, ReturnStructureSlotsPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(CampBlockRemovePayload.ID, CampBlockRemovePayload.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(CampBlockSetOwnerPayload.ID,
                 (payload, context) -> {
@@ -87,7 +92,7 @@ public class NomadsCamps implements ModInitializer {
 //                            .getSavePath(WorldSavePath.GENERATED)
 //                            .resolve(MOD_ID)
 //                            //TODO reimplement each player having their own structure directory
-//                            //.resolve(sender.getNameForScoreboard().toLowerCase());
+//                            //.resolve(sender.getNameForScoreboard().toLowerCase())
 //                            .resolve("structures");
 //
 //                    // Return to sender!
@@ -119,6 +124,41 @@ public class NomadsCamps implements ModInitializer {
             //IDK man
             return null;
         }
+    }
+
+    public static ArrayList<StructureSlot> getStructureSlotsFromFile(Path structureDirectory) {
+        Path file = structureDirectory.resolve("slots.json");
+        ArrayList<StructureSlot> structureSlots = new ArrayList<>();
+
+        Gson jsonParser = new GsonBuilder().create();
+        if(Files.exists(file)) {
+            try (Reader reader = Files.newBufferedReader(file)) {
+                structureSlots = (jsonParser.fromJson(reader, new TypeToken<ArrayList<StructureSlot>>(){}));
+            } catch (IOException e) {
+                //IDK man
+                return null;
+            }
+        }
+
+        return structureSlots;
+    }
+
+    public static boolean writeStructureSlotsToFile(Path structureDirectory, CampBlockEntity supplies) {
+        Path target = structureDirectory.resolve("slots.json");
+        Gson jsonParser = new GsonBuilder().create();
+
+        try {
+            Files.createDirectories(target.getParent());
+        } catch (IOException e) {
+            return false;
+        }
+        try(BufferedWriter writer = Files.newBufferedWriter(target)) {
+            jsonParser.toJson(supplies.getStructureSlots(), writer);
+        } catch (IOException e) {
+            return false;
+        }
+
+        return true;
     }
 
     private CampBlockEntity getCampBlockAtPos(BlockPos pos, ServerPlayerEntity sender)

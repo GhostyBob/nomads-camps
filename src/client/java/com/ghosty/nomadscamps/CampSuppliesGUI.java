@@ -1,15 +1,8 @@
 package com.ghosty.nomadscamps;
 
-import com.ghosty.nomadscamps.networking.CampBlockBuildPayload;
-import com.ghosty.nomadscamps.networking.CampBlockSavePayload;
-import com.ghosty.nomadscamps.networking.CampBlockSetOwnerPayload;
-import com.ghosty.nomadscamps.networking.QueryStructuresPayload;
-import com.ghosty.nomadscamps.util.IEntityDataSaver;
-import com.ghosty.nomadscamps.util.SuppliesData;
+import com.ghosty.nomadscamps.networking.*;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.block.entity.StructureBlockBlockEntity;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
 import net.minecraft.client.gui.Selectable;
@@ -18,21 +11,18 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ElementListWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.gui.widget.TextWidget;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import org.jetbrains.annotations.Nullable;
 
-import javax.swing.plaf.synth.Region;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
 public class CampSuppliesGUI extends Screen {
 
@@ -45,6 +35,7 @@ public class CampSuppliesGUI extends Screen {
     public BlockPos pos;
     ///  A list of structure names registered to the player.
     public /*static*/ArrayList<String> savedStructures;
+    public ArrayList<StructureSlot> structureSlots;
     ///  A placeholder element to display while waiting for savedStructures.
     private TextWidget structureListLoadingText;
 
@@ -93,6 +84,8 @@ public class CampSuppliesGUI extends Screen {
                 break;
             case "structurePlacerTemp":
                 openStructurePlacerTEMP();
+                break;
+            case "structureSlot":
                 break;
             default:
                 close();
@@ -391,6 +384,22 @@ public class CampSuppliesGUI extends Screen {
         }
     }
 
+    public void recieveStructures(ArrayList<StructureSlot> slots) {
+        structureSlots = slots;
+
+        if(address.equals("structureList")) {
+            structureListWidget structureList = new structureListWidget(client,
+                    backgroundWidth / 2,
+                    backgroundHeight - 10,
+                    (super.width / 2 - backgroundWidth / 2) + 5,
+                    (super.height / 2 - backgroundHeight / 2) + 5,
+                    this
+            );
+            this.addDrawableChild(structureList);
+            this.remove(structureListLoadingText);
+        }
+    }
+
     private boolean sendOwnershipPacket() {
         ClientPlayNetworking.send(new CampBlockSetOwnerPayload(pos));
         return true;
@@ -404,6 +413,13 @@ public class CampSuppliesGUI extends Screen {
     private boolean sendBuildPacket(BlockPos suppliesPos, Identifier structureName, BlockPos origin) {
         ClientPlayNetworking.send(new CampBlockBuildPayload(suppliesPos, structureName, origin));
         return true;
+    }
+
+    protected void sendRemovePacket(/*BlockPos suppliesPos,*/ BlockBox area) {
+        BlockPos min = new BlockPos(area.getMinX(), area.getMinY(), area.getMinZ());
+        BlockPos max = new BlockPos(area.getMaxX(), area.getMaxY(), area.getMaxZ());
+
+        ClientPlayNetworking.send(new CampBlockRemovePayload(min, max));
     }
     // endregion NETWORKING
 
@@ -420,10 +436,11 @@ public class CampSuppliesGUI extends Screen {
             Collator collator = Collator.getInstance(Locale.getDefault()); //What is this??? Its something used to sort the entries
 
             //Add entries to the list using this.addEntry(theEntryToAdd)
-            for(String s : parentGui.savedStructures) {
+            for(StructureSlot s : parentGui.structureSlots) {
+                //TODO don't forget to re-do this part!
                 //Cut off the end of the string so the file extension (.nbt) isn't included
-                String structureName = s.substring(0, s.length() - 4);
-                this.addEntry(new structureEntry(structureName, width - 8, 40, this.getX()));
+                //String structureName = s.substring(0, s.length() - 4);
+                this.addEntry(new structureEntry(s, width - 8, 40, this.getX()));
             }
         }
 
@@ -458,6 +475,7 @@ public class CampSuppliesGUI extends Screen {
             private int x;
 
             // Elements in this entry
+            private final StructureSlot structureSlot;
             //Icon?
             private final String name;
             private ButtonWidget nameButton;
@@ -467,14 +485,22 @@ public class CampSuppliesGUI extends Screen {
             // endregion FIELDS
 
             // Constructor
-            public structureEntry(String structureName, int width, int height, int x) {
-                this.name = structureName;
+            public structureEntry(StructureSlot slot, int width, int height, int x) {
+                this.structureSlot = slot;
+                this.name = slot.getStructureName();
                 this.x = x;
 
-                nameButton = ButtonWidget.builder(Text.of(name), (btn) -> {
-                    parentGui.startPlacingStructure(name);
-                }).dimensions(0, 0, width, height).build();
-                children.add(nameButton);
+                if(!structureSlot.isPlaced()) {
+                    nameButton = ButtonWidget.builder(Text.of(name), (btn) -> {
+                        parentGui.startPlacingStructure(name);
+                    }).dimensions(0, 0, width, height).build();
+                    children.add(nameButton);
+                } else {
+                    nameButton = ButtonWidget.builder(Text.of("Pack up " + name), (btn) -> {
+                        parentGui.sendRemovePacket(slot.getOccupiedArea());
+                    }).dimensions(0, 0, width, height).build();
+                    children.add(nameButton);
+                }
 
                 //other buttons...
             }

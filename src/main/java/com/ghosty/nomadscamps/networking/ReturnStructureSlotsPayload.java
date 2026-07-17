@@ -6,14 +6,13 @@ import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockBox;
 
 import java.util.ArrayList;
 import java.util.Objects;
 
 public record ReturnStructureSlotsPayload(ArrayList<StructureSlot> slots) implements CustomPayload {
-    public static final Identifier RETURN_STRUCTURES_ID = Identifier.of(NomadsCamps.MOD_ID, "return_saved_structures");
-    public static final CustomPayload.Id<ReturnStructureSlotsPayload> ID = new CustomPayload.Id<>(RETURN_STRUCTURES_ID);
+    public static final Identifier RETURN_STRUCTURE_SLOTS_ID = Identifier.of(NomadsCamps.MOD_ID, "return_structure_slots");
+    public static final CustomPayload.Id<ReturnStructureSlotsPayload> ID = new CustomPayload.Id<>(RETURN_STRUCTURE_SLOTS_ID);
     // TODO rewrite this codec (and the StructureSlot constructor) to use BlockBox's built in packetCodec
     public static final PacketCodec<RegistryByteBuf, ReturnStructureSlotsPayload> CODEC = PacketCodec.of(
             //Logic for writing
