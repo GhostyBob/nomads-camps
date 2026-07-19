@@ -102,7 +102,7 @@ public class StructureSlot {
     // endregion GETTERS
 
     // region METHODS
-    public void Place(BlockPos minCorner) {
+    public void place(BlockPos minCorner) {
         isPlaced = true;
 
         occupiedArea = new BlockBox(

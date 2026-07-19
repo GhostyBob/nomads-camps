@@ -1,15 +1,12 @@
 package com.ghosty.nomadscamps;
 
-import com.ghosty.nomadscamps.networking.CampSuppliesGUIPayload;
+import com.ghosty.nomadscamps.networking.ShowGUIPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.listener.ClientPlayPacketListener;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -19,14 +16,9 @@ import net.minecraft.structure.StructureTemplateManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.InvalidIdentifierException;
-import net.minecraft.util.StringHelper;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
-import org.apache.commons.lang3.NotImplementedException;
-import org.jetbrains.annotations.Nullable;
-import oshi.annotation.concurrent.Immutable;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -87,9 +79,11 @@ public class CampBlockEntity extends BlockEntity {
         if(player instanceof ServerPlayerEntity serverPlayer) {
             if(ownedBy(player)) {
                 //Send a packet to the client to open the camp supplies GUI
-                ServerPlayNetworking.send(serverPlayer, new CampSuppliesGUIPayload(this.pos, false));
+                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(false));
             } else if(uuid == null) {
-                ServerPlayNetworking.send(serverPlayer, new CampSuppliesGUIPayload(this.pos, true));
+                //TODO re-decide if the player should be able to claim supplies via a pop-up menu
+                setOwner(player);
+                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(false));
             } else {
                 serverPlayer.sendMessage(Text.of("These supplies are owned by " + getOwnerName()), true);
             }
@@ -123,54 +117,23 @@ public class CampBlockEntity extends BlockEntity {
     // endregion OWNERSHIP
 
     // region STRUCTURES
-    private boolean ableToSave = true;
-
-    public boolean saveStructure(@Nullable Identifier structureName, BlockPos origin, Vec3d structureSize) {
-        if(!ableToSave || structureName == null)
+    public static boolean placeStructure(ServerWorld world, StructureSlot slot, BlockPos origin) {
+        if(slot.isPlaced())
+        {
+            System.out.println(slot.getStructureName() + " is already placed!");
             return false;
-        else {
-
-            //convert structureSize to a Vec3i
-            Vec3i structureSizeInt = new Vec3i(
-                    (int) Math.floor(structureSize.x),
-                    (int) Math.floor(structureSize.y),
-                    (int) Math.floor(structureSize.z)
-            );
-
-            //get the world the structure is in
-            ServerWorld world = (ServerWorld) this.world;
-
-            StructureTemplateManager templateManager = world.getStructureTemplateManager();
-            StructureTemplate structureTemplate;
-            try {
-                structureTemplate = templateManager.getTemplateOrBlank(structureName);
-            } catch (InvalidIdentifierException e) {
-                return false;
-            }
-            //Write the structure from the world to the template
-            structureTemplate.saveFromWorld(world, origin, structureSizeInt, true, Blocks.BEDROCK);
-            structureTemplate.setAuthor(uuid.toString());
-            //Save the template
-            try {
-                System.out.println("Successfully saved " + structureName);
-                return templateManager.saveTemplate(structureName);
-            } catch (InvalidIdentifierException e) {
-                return false;
-            }
         }
-    }
 
-    public boolean placeStructure(ServerWorld world, Identifier structureName, BlockPos origin) {
         // Get a StructureTemplate, given the name of a structure
         StructureTemplate template;
         StructureTemplateManager templateManager = world.getStructureTemplateManager();
         try {
-            template = templateManager.getTemplateOrBlank(structureName);
+            template = templateManager.getTemplateOrBlank(Identifier.of(slot.getStructureName()));
         } catch (InvalidIdentifierException e) {
             return false;
         }
 
-        // Place the template
+        // place the template
         StructurePlacementData structurePlacementData = (new StructurePlacementData())/*.setMirror(this.mirror).setRotation(this.rotation).setIgnoreEntities(this.ignoreEntities)*/;
 
         boolean result = template.place(
@@ -181,9 +144,63 @@ public class CampBlockEntity extends BlockEntity {
                 null,
                 2);
 
-        System.out.println(result ? "Successfully placed " : "Failed to place " + structureName);
+        if (result)
+        {
+            slot.place(origin);
+            System.out.println("Successfully placed " + slot.getStructureName());
 
-        return result;
+            return true;
+        }
+
+        System.out.println("Failed to place " + slot.getStructureName());
+        return false;
+    }
+
+    public static boolean removeStructure(ServerWorld world, StructureSlot slot, String author) {
+        if (!slot.isPlaced()) {
+            System.out.println(slot.getStructureName() + " is not yet placed!");
+            return false;
+        }
+
+        if (saveStructure(world, slot, new BlockPos(
+                slot.getOccupiedArea().getMinX(),
+                slot.getOccupiedArea().getMinY(),
+                slot.getOccupiedArea().getMinZ()
+        ), author)) {
+            // TODO fill slot.occupiedArea with air.
+        }
+
+        return false;
+    }
+
+    public static boolean saveStructure(ServerWorld world, StructureSlot slot, BlockPos origin, String author) {
+        Identifier structureName = Identifier.of(slot.getStructureName());
+
+        //convert structureSize to a Vec3i
+        Vec3i structureSizeInt = new Vec3i(
+                slot.sizeX(),
+                slot.sizeY(),
+                slot.sizeZ()
+        );
+
+        StructureTemplateManager templateManager = world.getStructureTemplateManager();
+        StructureTemplate structureTemplate;
+        try {
+            structureTemplate = templateManager.getTemplateOrBlank(structureName);
+        } catch (InvalidIdentifierException e) {
+            return false;
+        }
+        //Write the structure from the world to the template
+        structureTemplate.saveFromWorld(world, origin, structureSizeInt, true, Blocks.BEDROCK);
+        structureTemplate.setAuthor(author);
+        //Save the template
+        try {
+            System.out.println("Successfully saved " + structureName);
+            return templateManager.saveTemplate(structureName);
+        } catch (InvalidIdentifierException e) {
+            return false;
+        }
+
     }
 
     // endregion STRUCTURES

@@ -164,12 +164,9 @@ public class CampSuppliesGUI extends Screen {
         if (NomadsCampsClient.instance.getSlots() == null) {
             ClientPlayNetworking.send(new UpdateSlotsPayload(false, new ArrayList<>()));
 
-            // FIXME Is it safe to hang this thread until the structures arrive?
-            receiveStructures();
-
             // Spinning up a thread just to populate this list might be overly memory-intensive
-//            Thread structureListWaiter = new Thread(this::receiveStructures);
-//            structureListWaiter.start();
+            Thread structureListWaiter = new Thread(this::receiveStructures);
+            structureListWaiter.start();
         } else {
             structureListWidget structureList = new structureListWidget(client,
                     backgroundWidth / 2,
@@ -306,7 +303,7 @@ public class CampSuppliesGUI extends Screen {
         );
 
 
-        ButtonWidget placeButton = ButtonWidget.builder(Text.of("Place"), (btn) -> {
+        ButtonWidget placeButton = ButtonWidget.builder(Text.of("place"), (btn) -> {
                     sendBuildPacket(
                             NomadsCampsClient.instance.getSlots().get(currentSlotIndex),
                             new BlockPos(new Vec3i(
@@ -382,22 +379,6 @@ public class CampSuppliesGUI extends Screen {
         );
         this.addDrawableChild(structureList);
     }
-
-//    public void recieveStructures(ArrayList<StructureSlot> slots) {
-//        structureSlots = slots;
-//
-//        if(address.equals("structureList")) {
-//            structureListWidget structureList = new structureListWidget(client,
-//                    backgroundWidth / 2,
-//                    backgroundHeight - 10,
-//                    (super.width / 2 - backgroundWidth / 2) + 5,
-//                    (super.height / 2 - backgroundHeight / 2) + 5,
-//                    this
-//            );
-//            this.addDrawableChild(structureList);
-//            this.remove(structureListLoadingText);
-//        }
-//    }
 
     private void sendOwnershipPacket() {
         ClientPlayNetworking.send(new SetOwnerPayload());
