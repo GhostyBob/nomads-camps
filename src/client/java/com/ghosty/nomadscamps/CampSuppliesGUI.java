@@ -13,9 +13,7 @@ import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.gui.widget.TextWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,14 +29,10 @@ public class CampSuppliesGUI extends Screen {
     public Screen prevScreen = null;
     /// The name of the current GUI screen.
     public String address;
-    /// The world position of the camp supplies that opened this GUI.
-    public BlockPos pos;
-    ///  A list of structure names registered to the player.
-    public /*static*/ArrayList<String> savedStructures;
-    public ArrayList<StructureSlot> structureSlots;
     ///  A placeholder element to display while waiting for savedStructures.
     private TextWidget structureListLoadingText;
-
+    /// A field to keep track of the structure slot currently being edited
+    private int currentSlotIndex = -1;
     // Some constants used for the look of the menu.
     private static final Identifier BACKGROUND_TEXTURE = Identifier.ofVanilla("textures/gui/demo_background.png");
     private final int backgroundWidth = 248;
@@ -53,16 +47,14 @@ public class CampSuppliesGUI extends Screen {
     // endregion FIELDS
 
     // region CONSTRUCTORS
-    public CampSuppliesGUI(String title, BlockPos passedPos) {
+    public CampSuppliesGUI(String title) {
         super(Text.of(title));
         address = title;
-        pos = passedPos;
     }
-    public CampSuppliesGUI(String title, Screen prev, BlockPos passedPos) {
+    public CampSuppliesGUI(String title, Screen prev) {
         super(Text.of(title));
         address = title;
         prevScreen = prev;
-        pos = passedPos;
     }
     // endregion CONSTRUCTORS
 
@@ -169,15 +161,25 @@ public class CampSuppliesGUI extends Screen {
         ).build();
 
         //Fetch saved structures
-        ClientPlayNetworking.send(new QueryStructuresPayload(pos));
-        structureListLoadingText = new TextWidget(
-                (super.height / 2 - backgroundHeight / 2) + 5,
-                (super.width / 2 - backgroundWidth / 2) + 5,
-                backgroundWidth / 2,
-                backgroundHeight - 10,
-                Text.of("Fetching saved structures..."),
-                textRenderer);
-        this.addDrawableChild(structureListLoadingText);
+        if (NomadsCampsClient.instance.getSlots() == null) {
+            ClientPlayNetworking.send(new UpdateSlotsPayload(false, new ArrayList<>()));
+
+            // FIXME Is it safe to hang this thread until the structures arrive?
+            receiveStructures();
+
+            // Spinning up a thread just to populate this list might be overly memory-intensive
+//            Thread structureListWaiter = new Thread(this::receiveStructures);
+//            structureListWaiter.start();
+        } else {
+            structureListWidget structureList = new structureListWidget(client,
+                    backgroundWidth / 2,
+                    backgroundHeight - 10,
+                    (super.width / 2 - backgroundWidth / 2) + 5,
+                    (super.height / 2 - backgroundHeight / 2) + 5,
+                    this
+            );
+            this.addDrawableChild(structureList);
+        }
 
         this.addDrawableChild(newStructureButton);
         this.addDrawableChild(closeButton);
@@ -250,19 +252,13 @@ public class CampSuppliesGUI extends Screen {
             //TODO refactor the BlockPos and Vec3i to use the new bounding box system
             //TODO reimplement each player having their own directory
             sendSavePacket(
-                    pos,
-                    Identifier.of(
-                            NomadsCamps.MOD_ID,
-                            /*MinecraftClient.getInstance().player.getNameForScoreboard().toLowerCase() +
-                            "/" + */nameField.getText().toLowerCase()),
+                    NomadsCampsClient.instance.getSlots().get(currentSlotIndex),
                     new BlockPos(
                             Integer.parseInt(xField.getText()),
                             Integer.parseInt(yField.getText()),
-                            Integer.parseInt(zField.getText())),
-                    new Vec3i(
-                            Integer.parseInt(lengthField.getText()),
-                            Integer.parseInt(heightField.getText()),
-                            Integer.parseInt(widthField.getText())));
+                            Integer.parseInt(zField.getText())
+                    )
+            );
             close();
         }).dimensions(
                 (super.width / 2) - (backgroundWidth / 4) - 30,
@@ -311,17 +307,15 @@ public class CampSuppliesGUI extends Screen {
 
 
         ButtonWidget placeButton = ButtonWidget.builder(Text.of("Place"), (btn) -> {
-            sendBuildPacket(
-                    pos,
-                    Identifier.of(
-                            NomadsCamps.MOD_ID,
-                            /*MinecraftClient.getInstance().player.getNameForScoreboard().toLowerCase() +
-                            "/" + */currentlyPlacingStructureName),
-                    new BlockPos(new Vec3i(
-                            Integer.parseInt(xField.getText()),
-                            Integer.parseInt(yField.getText()),
-                            Integer.parseInt(zField.getText()))));
-            forceClose();
+                    sendBuildPacket(
+                            NomadsCampsClient.instance.getSlots().get(currentSlotIndex),
+                            new BlockPos(new Vec3i(
+                                    Integer.parseInt(xField.getText()),
+                                    Integer.parseInt(yField.getText()),
+                                    Integer.parseInt(zField.getText()))
+                            )
+                    );
+                    forceClose();
                 }
         ).dimensions(
                 (super.width / 2) - 30,
@@ -345,8 +339,8 @@ public class CampSuppliesGUI extends Screen {
         // Close the gui, but remember the page to start on for next time the player opens it
         // Display some kind of hologram anchored to the block the player is facing
         // When the player right clicks, check to see if the current position is valid
-            // If it is, place the structure, then exit the "placing state"
-            // If it isn't, do nothing
+        // If it is, place the structure, then exit the "placing state"
+        // If it isn't, do nothing
         // If the player ever presses escape, exit the "placing state"
     }
     //endregion PAGE LAYOUTS
@@ -354,9 +348,9 @@ public class CampSuppliesGUI extends Screen {
     // region HELPER METHODS
     protected void switchScreen(String title, @Nullable Screen parent) {
         if(parent == null) {
-            this.client.setScreen((new CampSuppliesGUI(title, pos)));
+            this.client.setScreen((new CampSuppliesGUI(title)));
         } else {
-            this.client.setScreen(new CampSuppliesGUI(title, parent, pos));
+            this.client.setScreen(new CampSuppliesGUI(title, parent));
         }
     }
 
@@ -368,58 +362,57 @@ public class CampSuppliesGUI extends Screen {
     // endregion HELPER METHODS
 
     // region NETWORKING
-    public void receiveStructures(ArrayList<String> names) {
-        savedStructures = names;
-
-        if(address.equals("structureList")) {
-            structureListWidget structureList = new structureListWidget(client,
-                    backgroundWidth / 2,
-                    backgroundHeight - 10,
-                    (super.width / 2 - backgroundWidth / 2) + 5,
-                    (super.height / 2 - backgroundHeight / 2) + 5,
-                    this
-            );
-            this.addDrawableChild(structureList);
-            this.remove(structureListLoadingText);
+    public void receiveStructures() {
+        try {
+            while (NomadsCampsClient.instance.getSlots() == null)
+                Thread.sleep(10);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
+
+        if(!address.equals("structureList"))
+            return;
+
+        structureListWidget structureList = new structureListWidget(client,
+                backgroundWidth / 2,
+                backgroundHeight - 10,
+                (super.width / 2 - backgroundWidth / 2) + 5,
+                (super.height / 2 - backgroundHeight / 2) + 5,
+                this
+        );
+        this.addDrawableChild(structureList);
     }
 
-    public void recieveStructures(ArrayList<StructureSlot> slots) {
-        structureSlots = slots;
+//    public void recieveStructures(ArrayList<StructureSlot> slots) {
+//        structureSlots = slots;
+//
+//        if(address.equals("structureList")) {
+//            structureListWidget structureList = new structureListWidget(client,
+//                    backgroundWidth / 2,
+//                    backgroundHeight - 10,
+//                    (super.width / 2 - backgroundWidth / 2) + 5,
+//                    (super.height / 2 - backgroundHeight / 2) + 5,
+//                    this
+//            );
+//            this.addDrawableChild(structureList);
+//            this.remove(structureListLoadingText);
+//        }
+//    }
 
-        if(address.equals("structureList")) {
-            structureListWidget structureList = new structureListWidget(client,
-                    backgroundWidth / 2,
-                    backgroundHeight - 10,
-                    (super.width / 2 - backgroundWidth / 2) + 5,
-                    (super.height / 2 - backgroundHeight / 2) + 5,
-                    this
-            );
-            this.addDrawableChild(structureList);
-            this.remove(structureListLoadingText);
-        }
+    private void sendOwnershipPacket() {
+        ClientPlayNetworking.send(new SetOwnerPayload());
     }
 
-    private boolean sendOwnershipPacket() {
-        ClientPlayNetworking.send(new CampBlockSetOwnerPayload(pos));
-        return true;
+    private void sendBuildPacket(StructureSlot slot, BlockPos origin) {
+        ClientPlayNetworking.send(new StructureActionPayload(1, slot, origin));
     }
 
-    private boolean sendSavePacket(BlockPos suppliesPos, Identifier structureName, BlockPos origin, Vec3i size) {
-        ClientPlayNetworking.send(new CampBlockSavePayload(suppliesPos, structureName, origin, Vec3d.of(size)));
-        return true;
+    protected void sendRemovePacket(StructureSlot slot) {
+        ClientPlayNetworking.send(new StructureActionPayload(2, slot, (BlockPos) BlockPos.ZERO));
     }
 
-    private boolean sendBuildPacket(BlockPos suppliesPos, Identifier structureName, BlockPos origin) {
-        ClientPlayNetworking.send(new CampBlockBuildPayload(suppliesPos, structureName, origin));
-        return true;
-    }
-
-    protected void sendRemovePacket(/*BlockPos suppliesPos,*/ BlockBox area) {
-        BlockPos min = new BlockPos(area.getMinX(), area.getMinY(), area.getMinZ());
-        BlockPos max = new BlockPos(area.getMaxX(), area.getMaxY(), area.getMaxZ());
-
-        ClientPlayNetworking.send(new CampBlockRemovePayload(min, max));
+    protected void sendSavePacket(StructureSlot slot, BlockPos origin) {
+        ClientPlayNetworking.send(new StructureActionPayload(3, slot, origin));
     }
     // endregion NETWORKING
 
@@ -436,7 +429,7 @@ public class CampSuppliesGUI extends Screen {
             Collator collator = Collator.getInstance(Locale.getDefault()); //What is this??? Its something used to sort the entries
 
             //Add entries to the list using this.addEntry(theEntryToAdd)
-            for(StructureSlot s : parentGui.structureSlots) {
+            for(StructureSlot s : NomadsCampsClient.instance.getSlots()) {
                 //TODO don't forget to re-do this part!
                 //Cut off the end of the string so the file extension (.nbt) isn't included
                 //String structureName = s.substring(0, s.length() - 4);
@@ -497,7 +490,7 @@ public class CampSuppliesGUI extends Screen {
                     children.add(nameButton);
                 } else {
                     nameButton = ButtonWidget.builder(Text.of("Pack up " + name), (btn) -> {
-                        parentGui.sendRemovePacket(slot.getOccupiedArea());
+                        parentGui.sendRemovePacket(slot);
                     }).dimensions(0, 0, width, height).build();
                     children.add(nameButton);
                 }
