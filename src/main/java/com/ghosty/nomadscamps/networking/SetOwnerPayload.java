@@ -7,14 +7,14 @@ import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
-public record CampBlockSetOwnerPayload(BlockPos suppliesPos) implements CustomPayload {
-    public static final Identifier SET_CAMP_BLOCK_OWNER = Identifier.of(NomadsCamps.MOD_ID, "set_supplies_owner");
-    public static final CustomPayload.Id<CampBlockSetOwnerPayload> ID = new CustomPayload.Id<>(SET_CAMP_BLOCK_OWNER);
-    public static final PacketCodec<RegistryByteBuf, CampBlockSetOwnerPayload> CODEC = PacketCodec.of(
+public record SetOwnerPayload(BlockPos suppliesPos) implements CustomPayload {
+    public static final Identifier SET_OWNER_ID = Identifier.of(NomadsCamps.MOD_ID, "set_supplies_owner");
+    public static final CustomPayload.Id<SetOwnerPayload> ID = new CustomPayload.Id<>(SET_OWNER_ID);
+    public static final PacketCodec<RegistryByteBuf, SetOwnerPayload> CODEC = PacketCodec.of(
             (value, buf) -> {
                 buf.writeBlockPos(value.suppliesPos);
             },
-            buf -> new CampBlockSetOwnerPayload(
+            buf -> new SetOwnerPayload(
                     buf.readBlockPos()
             )
     );

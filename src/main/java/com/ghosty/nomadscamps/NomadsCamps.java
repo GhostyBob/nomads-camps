@@ -8,6 +8,8 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.network.RegistryByteBuf;
+import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.WorldSavePath;
@@ -27,6 +29,8 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public class NomadsCamps implements ModInitializer {
+
+    // region FIELDS
     // TODO fill out fabric.mod.json and README.md
     public static final String MOD_ID = "nomads-camps";
 
@@ -36,7 +40,9 @@ public class NomadsCamps implements ModInitializer {
     // TODO replace sysout printlns with logger writes
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	@Override
+    // endregion FIELDS
+
+    @Override
 	public void onInitialize() {
 		// This code runs as soon as Minecraft is in a mod-load-ready state.
 		// However, some things (like resources) may still be uninitialized.
@@ -46,68 +52,65 @@ public class NomadsCamps implements ModInitializer {
         ModBlockEntities.initialize();
 
         // region NETWORKING
-        PayloadTypeRegistry.playS2C().register(CampSuppliesGUIPayload.ID, CampSuppliesGUIPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(CampBlockSetOwnerPayload.ID, CampBlockSetOwnerPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(CampBlockSavePayload.ID, CampBlockSavePayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(CampBlockBuildPayload.ID, CampBlockBuildPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(QueryStructuresPayload.ID, QueryStructuresPayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(ReturnStructuresPayload.ID, ReturnStructuresPayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(ReturnStructureSlotsPayload.ID, ReturnStructureSlotsPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(CampBlockRemovePayload.ID, CampBlockRemovePayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(StructureActionPayload.ID, StructureActionPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(SetOwnerPayload.ID, SetOwnerPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(UpdateSlotsPayload.ID, UpdateSlotsPayload.CODEC);
 
-        ServerPlayNetworking.registerGlobalReceiver(CampBlockSetOwnerPayload.ID,
+        PayloadTypeRegistry.playS2C().register(ShowGUIPayload.ID, ShowGUIPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(ReturnSlotsPayload.ID, ReturnSlotsPayload.CODEC);
+
+        ServerPlayNetworking.registerGlobalReceiver(StructureActionPayload.ID,
+                (payload, context) -> {
+                    ServerPlayerEntity sender = context.player();
+                    CampBlockEntity supplies = getCampBlockAtPos(payload.pos(), sender);
+
+                    switch(payload.type())
+                    {
+                        //Case 1 is "build"
+                        case 1:
+                            supplies.placeStructure(sender.getWorld(), payload.slot());
+                            break;
+                        //Case 2 is "remove"
+                        case 2:
+                            supplies.removeStructure(sender.getWorld(), payload.slot());
+                            break;
+                        //There might be a case 3 for "save" eventually
+                        default:
+                            break;
+                    }
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(SetOwnerPayload.ID,
                 (payload, context) -> {
                     ServerPlayerEntity sender = context.player();
                     CampBlockEntity supplies = getCampBlockAtPos(payload.suppliesPos(), sender);
 
                     if(supplies.setOwner(sender))
-                        System.out.println("Owner set!");
-                });
+                         System.out.println("Owner set!");
+        });
 
-        ServerPlayNetworking.registerGlobalReceiver(CampBlockSavePayload.ID,
+        ServerPlayNetworking.registerGlobalReceiver(UpdateSlotsPayload.ID,
                 (payload, context) -> {
-                    //access payload data using payload.fieldName();
-                    ServerPlayerEntity sender = context.player();
-                    CampBlockEntity supplies = getCampBlockAtPos(payload.suppliesPos(), sender);
+                    Path structureDirectory = context.player().server
+                            .getSavePath(WorldSavePath.GENERATED)
+                            .resolve(MOD_ID)
+                            //TODO reimplement each player having their own structure directory
+                            //.resolve(context.player().getNameForScoreboard().toLowerCase())
+                            .resolve("structures");
 
-                    if(!supplies.saveStructure(payload.structName(), payload.origin(), payload.size()))
-                        System.out.println("Structure failed to save!");
-                });
+                    if(payload.changed())
+                    {
+                        // Write the received slot list into the files
+                        writeStructureSlotsToFile(structureDirectory, payload.slots());
+                    }
 
-        ServerPlayNetworking.registerGlobalReceiver(CampBlockBuildPayload.ID,
-                (payload, context) -> {
-                    ServerPlayerEntity sender = context.player();
-                    CampBlockEntity supplies = getCampBlockAtPos(payload.suppliesPos(), sender);
-
-                    if(!supplies.placeStructure((ServerWorld) sender.getWorld(), payload.structureName(), payload.origin()))
-                            System.out.println("Structure failed to place!");
-                });
-
-        // Old implementation; only returns the names of structures when queried
-//        ServerPlayNetworking.registerGlobalReceiver(QueryStructuresPayload.ID,
-//                (payload, context) -> {
-//                    ServerPlayerEntity sender = context.player();
-//
-//                    Path structureDirectory = sender.server
-//                            .getSavePath(WorldSavePath.GENERATED)
-//                            .resolve(MOD_ID)
-//                            //TODO reimplement each player having their own structure directory
-//                            //.resolve(sender.getNameForScoreboard().toLowerCase())
-//                            .resolve("structures");
-//
-//                    // Return to sender!
-//                    ServerPlayNetworking.send(sender, new ReturnStructuresPayload(getKnownStructuresFromFile(structureDirectory)));
-//                });
-
-        // New implementation; returns the list of StructureSlots when queried
-        ServerPlayNetworking.registerGlobalReceiver(QueryStructuresPayload.ID,
-                (payload, context) -> {
-                    ServerPlayerEntity sender = context.player();
-                    ArrayList<StructureSlot> slots = getCampBlockAtPos(payload.suppliesPos(), sender).getStructureSlots();;
-
-                    // Return to sender!
-                    ServerPlayNetworking.send(sender, new ReturnStructureSlotsPayload(slots));
-                });
+                    // Even if you just got a structure list, rebuild it from the files just to be safe
+                    ServerPlayNetworking.send(
+                            context.player(),
+                            new ReturnSlotsPayload(
+                                    getStructureSlotsFromFile(structureDirectory)
+                            ));
+        });
         // endregion NETWORKING
 	}
 
@@ -141,6 +144,24 @@ public class NomadsCamps implements ModInitializer {
         }
 
         return structureSlots;
+    }
+
+    public static boolean writeStructureSlotsToFile(Path structureDirectory, ArrayList<StructureSlot> slots) {
+        Path target = structureDirectory.resolve("slots.json");
+        Gson jsonParser = new GsonBuilder().create();
+
+        try {
+            Files.createDirectories(target.getParent());
+        } catch (IOException e) {
+            return false;
+        }
+        try(BufferedWriter writer = Files.newBufferedWriter(target)) {
+            jsonParser.toJson(slots, writer);
+        } catch (IOException e) {
+            return false;
+        }
+
+        return true;
     }
 
     public static boolean writeStructureSlotsToFile(Path structureDirectory, CampBlockEntity supplies) {

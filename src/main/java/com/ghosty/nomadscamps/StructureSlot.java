@@ -1,8 +1,12 @@
 package com.ghosty.nomadscamps;
 
+import net.minecraft.network.RegistryByteBuf;
+import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Objects;
 
 public class StructureSlot {
     // TODO make these pull from the .config file
@@ -23,6 +27,25 @@ public class StructureSlot {
     private final boolean captureEntities;
     // private List ignoredBlocks;
     // endregion FIELDS
+
+    // region CODEC DEFINITION
+    public static final PacketCodec<RegistryByteBuf, StructureSlot> PACKET_CODEC =
+            PacketCodec.of((value, buf) -> {
+                        buf.writeString(value.getStructureName());
+                        buf.writeBlockPos((value.isPlaced()) ? Objects.requireNonNull(value.getOccupiedArea()).getCenter() : null);
+                        buf.writeInt(value.sizeX());
+                        buf.writeInt(value.sizeY());
+                        buf.writeInt(value.sizeZ());
+                        buf.writeBoolean(value.canCaptureEntities());
+                    }, buf -> new StructureSlot(
+                            buf.readString(),
+                            buf.readBlockPos(),
+                            buf.readInt(),
+                            buf.readInt(),
+                            buf.readInt(),
+                            buf.readBoolean()
+                    ));
+    // endregion CODEC DEFINITION
 
     // region CONSTRUCTORS
     public StructureSlot() {
