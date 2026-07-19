@@ -62,19 +62,25 @@ public class NomadsCamps implements ModInitializer {
         ServerPlayNetworking.registerGlobalReceiver(StructureActionPayload.ID,
                 (payload, context) -> {
                     ServerPlayerEntity sender = context.player();
-                    CampBlockEntity supplies = getCampBlockAtPos(payload.pos(), sender);
 
                     switch(payload.type())
                     {
                         //Case 1 is "build"
                         case 1:
-                            supplies.placeStructure(sender.getWorld(), payload.slot());
+                            CampBlockEntity.placeStructure(sender.getServerWorld(), payload.slot(), payload.origin());
                             break;
                         //Case 2 is "remove"
                         case 2:
-                            supplies.removeStructure(sender.getWorld(), payload.slot());
+                            CampBlockEntity.removeStructure(sender.getServerWorld(), payload.slot(), sender.getUuidAsString());
                             break;
-                        //There might be a case 3 for "save" eventually
+                        //Case 3 is "save"
+                        case 3:
+                            CampBlockEntity.saveStructure(sender.getServerWorld(), payload.slot(), new BlockPos(
+                                    payload.slot().getOccupiedArea().getMinX(),
+                                    payload.slot().getOccupiedArea().getMinY(),
+                                    payload.slot().getOccupiedArea().getMinZ()),
+                                    sender.getUuidAsString());
+                            break;
                         default:
                             break;
                     }
@@ -82,11 +88,11 @@ public class NomadsCamps implements ModInitializer {
 
         ServerPlayNetworking.registerGlobalReceiver(SetOwnerPayload.ID,
                 (payload, context) -> {
-                    ServerPlayerEntity sender = context.player();
-                    CampBlockEntity supplies = getCampBlockAtPos(payload.suppliesPos(), sender);
-
-                    if(supplies.setOwner(sender))
-                         System.out.println("Owner set!");
+//                    ServerPlayerEntity sender = context.player();
+//                    CampBlockEntity supplies = getCampBlockAtPos(payload.suppliesPos(), sender);
+//
+//                    if(supplies.setOwner(sender))
+//                         System.out.println("Owner set!");
         });
 
         ServerPlayNetworking.registerGlobalReceiver(UpdateSlotsPayload.ID,
