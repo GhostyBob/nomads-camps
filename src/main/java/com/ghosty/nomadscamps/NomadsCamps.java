@@ -23,6 +23,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -121,22 +122,15 @@ public class NomadsCamps implements ModInitializer {
 	}
 
     // region HELPER METHODS
-    public ArrayList<String> getKnownStructuresFromFile(Path structureDirectory) {
-        try(Stream<Path> files = Files.list(structureDirectory)) {
-            List<Path> list = files.filter(Files::isRegularFile).toList();
-            ArrayList<String> structureNames = new ArrayList<>();
-            for(Path file : list) {
-                structureNames.add(file.subpath(file.getNameCount() - 1, file.getNameCount()).toString());
-            }
-            return structureNames;
-        } catch(IOException e) {
-            //IDK man
-            return null;
-        }
-    }
-
     public static ArrayList<StructureSlot> getStructureSlotsFromFile(Path structureDirectory) {
-        Path file = structureDirectory.resolve("slots.json");
+        Path file;
+        try {
+            file = structureDirectory.resolve("slots.json");
+        } catch( InvalidPathException e) {
+            ArrayList<StructureSlot> output = getDefaultStructureSlots();
+            writeStructureSlotsToFile(structureDirectory, output);
+            return output;
+        }
         ArrayList<StructureSlot> structureSlots = new ArrayList<>();
 
         Gson jsonParser = new GsonBuilder().create();
@@ -156,6 +150,8 @@ public class NomadsCamps implements ModInitializer {
         Path target = structureDirectory.resolve("slots.json");
         Gson jsonParser = new GsonBuilder().create();
 
+        // TODO should this be in front of target's initialization?
+        //  See the try statement at the start of getStructureSlotsFromFile
         try {
             Files.createDirectories(target.getParent());
         } catch (IOException e) {
@@ -163,24 +159,6 @@ public class NomadsCamps implements ModInitializer {
         }
         try(BufferedWriter writer = Files.newBufferedWriter(target)) {
             jsonParser.toJson(slots, writer);
-        } catch (IOException e) {
-            return false;
-        }
-
-        return true;
-    }
-
-    public static boolean writeStructureSlotsToFile(Path structureDirectory, CampBlockEntity supplies) {
-        Path target = structureDirectory.resolve("slots.json");
-        Gson jsonParser = new GsonBuilder().create();
-
-        try {
-            Files.createDirectories(target.getParent());
-        } catch (IOException e) {
-            return false;
-        }
-        try(BufferedWriter writer = Files.newBufferedWriter(target)) {
-            jsonParser.toJson(supplies.getStructureSlots(), writer);
         } catch (IOException e) {
             return false;
         }
@@ -198,6 +176,17 @@ public class NomadsCamps implements ModInitializer {
             //TODO add dimension/world checking. Might already be handled by sender.getWorld()
             throw(new NullPointerException("Given location does not contain camp supplies!"));
         }
+    }
+
+    private static ArrayList<StructureSlot> getDefaultStructureSlots() {
+        // TODO have this pull from a .config
+        ArrayList<StructureSlot> output = new ArrayList<>(4);
+        output.add(new StructureSlot());
+        output.add(new StructureSlot());
+        output.add(new StructureSlot());
+        output.add(new StructureSlot());
+
+        return output;
     }
     // endregion HELPER METHODS
 }

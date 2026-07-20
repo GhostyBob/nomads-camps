@@ -41,32 +41,6 @@ public class CampBlockEntity extends BlockEntity {
         structureSlots = new ArrayList<>(numStructureSlots);
     }
 
-    private void populateStructureSlots() {
-        // Look in the files for a player's list of structures
-        // While this block is placed, it will have the structures stored in it for easy access.
-        assert this.getWorld() != null;
-        assert this.getWorld().getServer() != null;
-        Path directory = this.getWorld().getServer()
-                .getSavePath(WorldSavePath.GENERATED)
-                .resolve(NomadsCamps.MOD_ID)
-                //.resolve(ownerName.toLowerCase())
-                .resolve("structures");
-
-        structureSlots = NomadsCamps.getStructureSlotsFromFile(directory);
-    }
-
-    private void writeStructureSlots() {
-        assert this.getWorld() != null;
-        assert this.getWorld().getServer() != null;
-        Path directory = this.getWorld().getServer()
-                .getSavePath(WorldSavePath.GENERATED)
-                .resolve(NomadsCamps.MOD_ID)
-                //.resolve(ownerName.toLowerCase())
-                .resolve("structures");
-
-        NomadsCamps.writeStructureSlotsToFile(directory, this);
-    }
-
     // region OWNERSHIP
 
     //private final UUID DEFAULTUUID = UUID.fromString("ab63890e-685f-4ccd-b319-1b62d2d39444");
@@ -115,6 +89,34 @@ public class CampBlockEntity extends BlockEntity {
     }
 
     // endregion OWNERSHIP
+
+    // region STRUCTURE SLOTS
+    private void populateStructureSlots() {
+        // Look in the files for a player's list of structures
+        // While this block is placed, it will have the structures stored in it for easy access.
+        assert this.getWorld() != null;
+        assert this.getWorld().getServer() != null;
+        Path directory = this.getWorld().getServer()
+                .getSavePath(WorldSavePath.GENERATED)
+                .resolve(NomadsCamps.MOD_ID)
+                //.resolve(ownerName.toLowerCase())
+                .resolve("structures");
+
+        structureSlots = NomadsCamps.getStructureSlotsFromFile(directory);
+    }
+
+    private void writeStructureSlots() {
+        assert this.getWorld() != null;
+        assert this.getWorld().getServer() != null;
+        Path directory = this.getWorld().getServer()
+                .getSavePath(WorldSavePath.GENERATED)
+                .resolve(NomadsCamps.MOD_ID)
+                //.resolve(ownerName.toLowerCase())
+                .resolve("structures");
+
+        NomadsCamps.writeStructureSlotsToFile(directory, this.getStructureSlots());
+    }
+    // endregion STRUCTURE SLOTS
 
     // region STRUCTURES
     public static boolean placeStructure(ServerWorld world, StructureSlot slot, BlockPos origin) {

@@ -407,7 +407,7 @@ public class CampSuppliesGUI extends Screen {
             this.setX(x);
             parentGui = gui;
 
-            Collator collator = Collator.getInstance(Locale.getDefault()); //What is this??? Its something used to sort the entries
+            Collator collator = Collator.getInstance(Locale.getDefault()); //What is this??? It's something used to sort the entries
 
             //Add entries to the list using this.addEntry(theEntryToAdd)
             for(StructureSlot s : NomadsCampsClient.instance.getSlots()) {
