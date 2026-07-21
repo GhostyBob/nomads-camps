@@ -122,7 +122,7 @@ public class CampBlockEntity extends BlockEntity {
     public static boolean placeStructure(ServerWorld world, StructureSlot slot, BlockPos origin) {
         if(slot.isPlaced())
         {
-            System.out.println(slot.getStructureName() + " is already placed!");
+            System.out.println(slot.structureName + " is already placed!");
             return false;
         }
 
@@ -130,7 +130,7 @@ public class CampBlockEntity extends BlockEntity {
         StructureTemplate template;
         StructureTemplateManager templateManager = world.getStructureTemplateManager();
         try {
-            template = templateManager.getTemplateOrBlank(slot.getStructureFileName());
+            template = templateManager.getTemplateOrBlank(slot.structureFileName);
         } catch (InvalidIdentifierException e) {
             return false;
         }
@@ -149,18 +149,18 @@ public class CampBlockEntity extends BlockEntity {
         if (result)
         {
             slot.place(origin);
-            System.out.println("Successfully placed " + slot.getStructureName());
+            System.out.println("Successfully placed " + slot.structureName);
 
             return true;
         }
 
-        System.out.println("Failed to place " + slot.getStructureName());
+        System.out.println("Failed to place " + slot.structureName);
         return false;
     }
 
     public static boolean removeStructure(ServerWorld world, StructureSlot slot, String author) {
         if (!slot.isPlaced()) {
-            System.out.println(slot.getStructureName() + " is not yet placed!");
+            System.out.println(slot.structureName + " is not yet placed!");
             return false;
         }
 
@@ -176,7 +176,7 @@ public class CampBlockEntity extends BlockEntity {
     }
 
     public static boolean saveStructure(ServerWorld world, StructureSlot slot, BlockPos origin, String author) {
-        Identifier structureName = Identifier.of(slot.getStructureName());
+        Identifier structureName = Identifier.of(slot.structureName);
 
         //convert structureSize to a Vec3i
         Vec3i structureSizeInt = new Vec3i(

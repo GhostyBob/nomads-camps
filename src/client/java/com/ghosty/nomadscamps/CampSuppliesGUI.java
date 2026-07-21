@@ -104,11 +104,11 @@ public class CampSuppliesGUI extends Screen {
         }).dimensions(super.width / 2 - 116, super.height / 2 + 52 - 24, 232, 48).build();
 
         ButtonWidget upgradesButton = ButtonWidget.builder(Text.of("Manage Upgrades"), (btn) -> {
-            switchScreen("upgrades", this);
+            switchScreen("upgrades", this, null);
         }).dimensions(super.width / 2 - 116, super.height / 2 - 24, 232, 48).build();
 
         ButtonWidget structureMenuButton = ButtonWidget.builder(Text.of("View Structure List"), (btn) -> {
-            switchScreen("structureList", this);
+            switchScreen("structureList", this, null);
         }).dimensions(super.width / 2 - 116, super.height / 2 - 52 - 24, 232, 48).build();
 
         //Buttons should usually have a height of 20
@@ -145,7 +145,7 @@ public class CampSuppliesGUI extends Screen {
 
     private void openStructureList() {
         ButtonWidget newStructureButton = ButtonWidget.builder(Text.of("New Structure"), (btn) -> {
-            switchScreen("structureCreator", this);
+            switchScreen("structureCreator", this, null);
         }).dimensions(
                 (super.width / 2) + (backgroundWidth / 4) - 30,
                 (super.height / 2) - (backgroundHeight / 4) - 10,
@@ -329,19 +329,57 @@ public class CampSuppliesGUI extends Screen {
     }
 
     private void openSlotEditor() {
-        TextWidget placeholderText = new TextWidget((width / 2) - 100, height / 2, 200, 0, Text.of("Implement me plz :3"), textRenderer);
-        this.addDrawableChild(placeholderText);
+        // TODO redo this (and un-expose the file name setter)
+        TextFieldWidget nameField = new TextFieldWidget(
+                textRenderer,
+                width / 2 - 100,
+                height / 2 - 40,
+                200,
+                20,
+                Text.of("Structure Name")
+        );
+        nameField.setText(NomadsCampsClient.instance.getSlots().get(currentSlotIndex).structureName);
+
+        //This one is temp
+        TextFieldWidget filenameField = new TextFieldWidget(
+                textRenderer,
+                width / 2 - 100,
+                height / 2,
+                200,
+                20,
+                Text.of("Structure File Name")
+        );
+        filenameField.setText(NomadsCampsClient.instance.getSlots().get(currentSlotIndex).structureFileName.toString());
+
+        ButtonWidget saveButton = ButtonWidget.builder(
+                Text.of("Save"),
+                (btn) -> {
+                    NomadsCampsClient.instance.getSlots().get(currentSlotIndex).structureName = nameField.getText();
+                    NomadsCampsClient.instance.getSlots().get(currentSlotIndex).structureFileName = Identifier.of(filenameField.getText());
+                }
+        ).dimensions(
+                width / 2,
+                height / 2 + 40,
+                50,
+                20)
+        .build();
+
+        this.addDrawableChild(nameField);
+        this.addDrawableChild(filenameField);
+        this.addDrawableChild(saveButton);
     }
     //endregion PAGE LAYOUTS
 
     // region HELPER METHODS
-    protected CampSuppliesGUI switchScreen(String title, @Nullable Screen parent) {
+    protected CampSuppliesGUI switchScreen(String title, @Nullable Screen parent, @Nullable Integer index) {
         if(parent == null) {
             CampSuppliesGUI output = new CampSuppliesGUI(title);
+            if (index != null) output.currentSlotIndex = index;
             this.client.setScreen(output);
             return output;
         } else {
             CampSuppliesGUI output = new CampSuppliesGUI(title, parent);
+            if (index != null) output.currentSlotIndex = index;
             this.client.setScreen(output);
             return output;
         }
@@ -461,12 +499,12 @@ public class CampSuppliesGUI extends Screen {
             // Constructor
             public structureEntry(StructureSlot slot, int index, int width, int height, int x) {
                 this.structureSlot = slot;
-                this.name = slot.getStructureName();
+                this.name = slot.structureName;
                 this.x = x;
 
                 if(!structureSlot.isPlaced()) {
                     nameButton = ButtonWidget.builder(Text.of(name), (btn) -> {
-                        parentGui.switchScreen("structurePlacerTemp", parentGui).currentSlotIndex = index;
+                        parentGui.switchScreen("structurePlacerTemp", parentGui, index);
                     }).dimensions(0, 0, width - height - ELEMENT_PADDING, height).build();
                     children.add(nameButton);
                 } else {
@@ -478,7 +516,7 @@ public class CampSuppliesGUI extends Screen {
                 }
 
                 editButton = ButtonWidget.builder(Text.of("E"), (btn) -> {
-                    parentGui.switchScreen("slotEditor", parentGui).currentSlotIndex = index;
+                    parentGui.switchScreen("slotEditor", parentGui, index);
                 }).dimensions(0, 0, height, height).build();
                 children.add(editButton);
                 //other buttons...

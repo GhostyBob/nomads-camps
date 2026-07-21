@@ -16,8 +16,8 @@ public class StructureSlot {
     // TODO also set up a .config file
 
     // region FIELDS
-    private final String structureName;
-    private final Identifier structureFileName;
+    public String structureName;
+    public Identifier structureFileName;
 
     @Nullable
     private BlockBox occupiedArea;
@@ -35,7 +35,7 @@ public class StructureSlot {
     // region CODEC DEFINITION
     public static final PacketCodec<RegistryByteBuf, StructureSlot> PACKET_CODEC =
             PacketCodec.of((value, buf) -> {
-                        buf.writeString(value.getStructureName());
+                        buf.writeString(value.structureName);
                         buf.writeString(value.structureFileName.toString());
                         buf.writeNullable(
                                 value.isPlaced() ?
@@ -68,7 +68,7 @@ public class StructureSlot {
         sizeZ = 4;
 
         structureName = "Empty Slot";
-        structureFileName = Identifier.of("nomads-camps:emptyplot.nbt");
+        structureFileName = Identifier.of("nomads-camps:emptyplot");
 
         captureEntities = false;
     }
@@ -108,10 +108,6 @@ public class StructureSlot {
     public int sizeX() { return sizeX; }
     public int sizeY() { return sizeY; }
     public int sizeZ() { return sizeZ; }
-
-    public String getStructureName() { return structureName; }
-
-    public Identifier getStructureFileName() { return structureFileName; }
 
     public boolean canCaptureEntities() { return captureEntities; }
     // endregion GETTERS
