@@ -116,20 +116,24 @@ public class StructureSlot {
     public void place(BlockPos minCorner) {
         isPlaced = true;
 
-        occupiedArea = new BlockBox(
-                minCorner.getX(),
-                minCorner.getY(),
-                minCorner.getZ(),
-                minCorner.getX() + sizeX,
-                minCorner.getY() + sizeY,
-                minCorner.getZ() + sizeZ
-        );
+        occupiedArea = getProposedArea(minCorner);
     }
 
     public void Remove() {
         isPlaced = false;
 
         occupiedArea = null;
+    }
+
+    public BlockBox getProposedArea(BlockPos origin) {
+        return new BlockBox(
+                origin.getX(),
+                origin.getY(),
+                origin.getZ(),
+                origin.getX() + sizeX,
+                origin.getY() + sizeY,
+                origin.getZ() + sizeZ
+        );
     }
     // endregion METHODS
 }

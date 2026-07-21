@@ -17,6 +17,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.InvalidIdentifierException;
 import net.minecraft.util.WorldSavePath;
+import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3i;
 
@@ -124,6 +125,18 @@ public class CampBlockEntity extends BlockEntity {
         {
             System.out.println(slot.structureName + " is already placed!");
             return false;
+        }
+
+        // Check if proposed placement overlaps anything
+        // ppa is short for proposedPlacementArea
+        BlockBox ppa = slot.getProposedArea(origin);
+        for(BlockPos pos : BlockPos.iterate(
+                ppa.getMinX(), ppa.getMinY(), ppa.getMinZ(),
+                ppa.getMaxX(), ppa.getMaxY(), ppa.getMaxZ())) {
+            if(!world.getBlockState(pos).isAir()) {
+                System.out.println("The proposed area has blocks in it!");
+                return false;
+            }
         }
 
         // Get a StructureTemplate, given the name of a structure
