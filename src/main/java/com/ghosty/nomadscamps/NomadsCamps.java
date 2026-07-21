@@ -123,17 +123,10 @@ public class NomadsCamps implements ModInitializer {
 
     // region HELPER METHODS
     public static ArrayList<StructureSlot> getStructureSlotsFromFile(Path structureDirectory) {
-        Path file;
-        try {
-            file = structureDirectory.resolve("slots.json");
-        } catch( InvalidPathException e) {
-            ArrayList<StructureSlot> output = getDefaultStructureSlots();
-            writeStructureSlotsToFile(structureDirectory, output);
-            return output;
-        }
-        ArrayList<StructureSlot> structureSlots = new ArrayList<>();
-
+        Path file = structureDirectory.resolve("slots.json");
+        ArrayList<StructureSlot> structureSlots;
         Gson jsonParser = new GsonBuilder().create();
+
         if(Files.exists(file)) {
             try (Reader reader = Files.newBufferedReader(file)) {
                 structureSlots = (jsonParser.fromJson(reader, new TypeToken<ArrayList<StructureSlot>>(){}));
@@ -141,6 +134,9 @@ public class NomadsCamps implements ModInitializer {
                 //IDK man
                 return null;
             }
+        } else {
+            structureSlots = getDefaultStructureSlots();
+            writeStructureSlotsToFile(structureDirectory, structureSlots);
         }
 
         return structureSlots;

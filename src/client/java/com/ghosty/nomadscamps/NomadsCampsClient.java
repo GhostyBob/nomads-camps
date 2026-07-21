@@ -2,6 +2,7 @@ package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.ReturnSlotsPayload;
 import com.ghosty.nomadscamps.networking.ShowGUIPayload;
+import com.ghosty.nomadscamps.networking.UpdateSlotsPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;

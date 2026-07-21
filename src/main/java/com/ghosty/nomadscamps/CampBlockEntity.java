@@ -92,7 +92,7 @@ public class CampBlockEntity extends BlockEntity {
 
     // region STRUCTURE SLOTS
     private void populateStructureSlots() {
-        // Look in the files for a player's list of structures
+        // Look in the files for a player's list of structure slots
         // While this block is placed, it will have the structures stored in it for easy access.
         assert this.getWorld() != null;
         assert this.getWorld().getServer() != null;
@@ -130,7 +130,7 @@ public class CampBlockEntity extends BlockEntity {
         StructureTemplate template;
         StructureTemplateManager templateManager = world.getStructureTemplateManager();
         try {
-            template = templateManager.getTemplateOrBlank(Identifier.of(slot.getStructureName()));
+            template = templateManager.getTemplateOrBlank(slot.getStructureFileName());
         } catch (InvalidIdentifierException e) {
             return false;
         }
@@ -222,7 +222,7 @@ public class CampBlockEntity extends BlockEntity {
 
         //TODO this might cause performance issues since we don't need to write it every time
         //TODO also the writeNbt method might not be called if the supplies are placed when the world is closed
-        writeStructureSlots();
+        //writeStructureSlots();
     }
 
     @Override

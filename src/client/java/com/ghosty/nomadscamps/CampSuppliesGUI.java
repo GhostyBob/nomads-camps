@@ -77,7 +77,8 @@ public class CampSuppliesGUI extends Screen {
             case "structurePlacerTemp":
                 openStructurePlacerTEMP();
                 break;
-            case "structureSlot":
+            case "slotEditor":
+                openSlotEditor();
                 break;
             default:
                 close();
@@ -327,27 +328,22 @@ public class CampSuppliesGUI extends Screen {
         this.addDrawableChild(placeButton);
     }
 
-    /// Temp!
-    private static String currentlyPlacingStructureName;
-
-    protected void startPlacingStructure(String structureName) {
-        currentlyPlacingStructureName = structureName;
-        switchScreen("structurePlacerTemp", this);
-        // Close the gui, but remember the page to start on for next time the player opens it
-        // Display some kind of hologram anchored to the block the player is facing
-        // When the player right clicks, check to see if the current position is valid
-        // If it is, place the structure, then exit the "placing state"
-        // If it isn't, do nothing
-        // If the player ever presses escape, exit the "placing state"
+    private void openSlotEditor() {
+        TextWidget placeholderText = new TextWidget((width / 2) - 100, height / 2, 200, 0, Text.of("Implement me plz :3"), textRenderer);
+        this.addDrawableChild(placeholderText);
     }
     //endregion PAGE LAYOUTS
 
     // region HELPER METHODS
-    protected void switchScreen(String title, @Nullable Screen parent) {
+    protected CampSuppliesGUI switchScreen(String title, @Nullable Screen parent) {
         if(parent == null) {
-            this.client.setScreen((new CampSuppliesGUI(title)));
+            CampSuppliesGUI output = new CampSuppliesGUI(title);
+            this.client.setScreen(output);
+            return output;
         } else {
-            this.client.setScreen(new CampSuppliesGUI(title, parent));
+            CampSuppliesGUI output = new CampSuppliesGUI(title, parent);
+            this.client.setScreen(output);
+            return output;
         }
     }
 
@@ -409,12 +405,13 @@ public class CampSuppliesGUI extends Screen {
 
             Collator collator = Collator.getInstance(Locale.getDefault()); //What is this??? It's something used to sort the entries
 
+            int index = 0;
             //Add entries to the list using this.addEntry(theEntryToAdd)
             for(StructureSlot s : NomadsCampsClient.instance.getSlots()) {
                 //TODO don't forget to re-do this part!
                 //Cut off the end of the string so the file extension (.nbt) isn't included
                 //String structureName = s.substring(0, s.length() - 4);
-                this.addEntry(new structureEntry(s, width - 8, 40, this.getX()));
+                this.addEntry(new structureEntry(s, index++, width - 8, 40, this.getX()));
             }
         }
 
@@ -448,34 +445,42 @@ public class CampSuppliesGUI extends Screen {
             // region FIELDS
             private int x;
 
+            private final int ELEMENT_PADDING = 5;
+
             // Elements in this entry
             private final StructureSlot structureSlot;
             //Icon?
             private final String name;
             private ButtonWidget nameButton;
+            private ButtonWidget editButton;
             //Edit button?
 
             private ArrayList<ButtonWidget> children = new ArrayList<ButtonWidget>();
             // endregion FIELDS
 
             // Constructor
-            public structureEntry(StructureSlot slot, int width, int height, int x) {
+            public structureEntry(StructureSlot slot, int index, int width, int height, int x) {
                 this.structureSlot = slot;
                 this.name = slot.getStructureName();
                 this.x = x;
 
                 if(!structureSlot.isPlaced()) {
                     nameButton = ButtonWidget.builder(Text.of(name), (btn) -> {
-                        parentGui.startPlacingStructure(name);
-                    }).dimensions(0, 0, width, height).build();
+                        parentGui.switchScreen("structurePlacerTemp", parentGui).currentSlotIndex = index;
+                    }).dimensions(0, 0, width - height - ELEMENT_PADDING, height).build();
                     children.add(nameButton);
                 } else {
                     nameButton = ButtonWidget.builder(Text.of("Pack up " + name), (btn) -> {
+                        parentGui.currentSlotIndex = index;
                         parentGui.sendRemovePacket(slot);
-                    }).dimensions(0, 0, width, height).build();
+                    }).dimensions(0, 0, width - height - ELEMENT_PADDING, height).build();
                     children.add(nameButton);
                 }
 
+                editButton = ButtonWidget.builder(Text.of("E"), (btn) -> {
+                    parentGui.switchScreen("slotEditor", parentGui).currentSlotIndex = index;
+                }).dimensions(0, 0, height, height).build();
+                children.add(editButton);
                 //other buttons...
             }
 
@@ -500,6 +505,9 @@ public class CampSuppliesGUI extends Screen {
                 //context.drawCenteredTextWithShadow(CampSuppliesGUI.this.textRenderer, this.name, x + (CampSuppliesGUI.super.width / 4), y + 15, 16777215);
                 nameButton.setPosition(getRowLeft(), (int) (y * 1.1 - 4));
                 nameButton.render(context, mouseX, mouseY, tickDelta);
+
+                editButton.setPosition(getRowLeft() + nameButton.getWidth() + ELEMENT_PADDING, (int) (y * 1.1 - 4));
+                editButton.render(context, mouseX, mouseY, tickDelta);
             }
 
             @Override

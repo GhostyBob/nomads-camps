@@ -2,11 +2,14 @@ package com.ghosty.nomadscamps;
 
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
+import net.minecraft.network.codec.PacketCodecs;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
+import java.util.Optional;
 
 public class StructureSlot {
     // TODO make these pull from the .config file
@@ -14,6 +17,7 @@ public class StructureSlot {
 
     // region FIELDS
     private final String structureName;
+    private final Identifier structureFileName;
 
     @Nullable
     private BlockBox occupiedArea;
@@ -32,18 +36,25 @@ public class StructureSlot {
     public static final PacketCodec<RegistryByteBuf, StructureSlot> PACKET_CODEC =
             PacketCodec.of((value, buf) -> {
                         buf.writeString(value.getStructureName());
-                        buf.writeBlockPos((value.isPlaced()) ? Objects.requireNonNull(value.getOccupiedArea()).getCenter() : null);
+                        buf.writeString(value.structureFileName.toString());
+                        buf.writeNullable(
+                                value.isPlaced() ?
+                                        Objects.requireNonNull(value.getOccupiedArea()).getCenter() :
+                                        null,
+                                (buf1, value1) -> buf1.writeBlockPos(value1)
+                        );
                         buf.writeInt(value.sizeX());
                         buf.writeInt(value.sizeY());
                         buf.writeInt(value.sizeZ());
                         buf.writeBoolean(value.canCaptureEntities());
                     }, buf -> new StructureSlot(
-                            buf.readString(),
-                            buf.readBlockPos(),
-                            buf.readInt(),
-                            buf.readInt(),
-                            buf.readInt(),
-                            buf.readBoolean()
+                        buf.readString(),
+                        Identifier.of(buf.readString()),
+                        buf.readNullable(buf1 -> buf1.readBlockPos()),
+                        buf.readInt(),
+                        buf.readInt(),
+                        buf.readInt(),
+                        buf.readBoolean()
                     ));
     // endregion CODEC DEFINITION
 
@@ -57,12 +68,14 @@ public class StructureSlot {
         sizeZ = 4;
 
         structureName = "Empty Slot";
+        structureFileName = Identifier.of("nomads-camps:emptyplot.nbt");
 
         captureEntities = false;
     }
 
-    public StructureSlot(String name, @Nullable BlockPos center, int sizeX, int sizeY, int sizeZ, boolean captureEntities) {
+    public StructureSlot(String name, Identifier fileName, @Nullable BlockPos center, int sizeX, int sizeY, int sizeZ, boolean captureEntities) {
         structureName = name;
+        structureFileName = fileName;
 
         isPlaced = center != null;
         if (isPlaced) {
@@ -97,6 +110,8 @@ public class StructureSlot {
     public int sizeZ() { return sizeZ; }
 
     public String getStructureName() { return structureName; }
+
+    public Identifier getStructureFileName() { return structureFileName; }
 
     public boolean canCaptureEntities() { return captureEntities; }
     // endregion GETTERS
