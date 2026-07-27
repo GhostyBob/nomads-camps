@@ -21,15 +21,14 @@ public class StructureSlot {
 
     @Nullable
     private BlockBox occupiedArea;
-
     private final int sizeX;
     private final int sizeY;
     private final int sizeZ;
-
     private boolean isPlaced;
-
     private final boolean captureEntities;
     // private List ignoredBlocks;
+
+    private boolean dirty = false;
     // endregion FIELDS
 
     // region CODEC DEFINITION
@@ -47,6 +46,7 @@ public class StructureSlot {
                         buf.writeInt(value.sizeY());
                         buf.writeInt(value.sizeZ());
                         buf.writeBoolean(value.canCaptureEntities());
+                        buf.writeBoolean(value.isDirty());
                     }, buf -> new StructureSlot(
                         buf.readString(),
                         Identifier.of(buf.readString()),
@@ -54,6 +54,7 @@ public class StructureSlot {
                         buf.readInt(),
                         buf.readInt(),
                         buf.readInt(),
+                        buf.readBoolean(),
                         buf.readBoolean()
                     ));
     // endregion CODEC DEFINITION
@@ -73,7 +74,8 @@ public class StructureSlot {
         captureEntities = false;
     }
 
-    public StructureSlot(String name, Identifier fileName, @Nullable BlockPos center, int sizeX, int sizeY, int sizeZ, boolean captureEntities) {
+    // This constructor should only be used by the codec defined above
+    private StructureSlot(String name, Identifier fileName, @Nullable BlockPos center, int sizeX, int sizeY, int sizeZ, boolean captureEntities, boolean dirty) {
         structureName = name;
         structureFileName = fileName;
 
@@ -97,6 +99,19 @@ public class StructureSlot {
         this.sizeZ = sizeZ;
 
         this.captureEntities = captureEntities;
+        this.dirty = dirty;
+    }
+
+    public StructureSlot(StructureSlot dirtySlot) {
+        structureName = dirtySlot.structureName;
+        structureFileName = dirtySlot.structureFileName;
+        isPlaced = dirtySlot.isPlaced;
+        occupiedArea = dirtySlot.occupiedArea;
+        sizeX = dirtySlot.sizeX;
+        sizeY = dirtySlot.sizeY;
+        sizeZ = dirtySlot.sizeZ;
+        captureEntities = dirtySlot.captureEntities;
+        // The dirty field is intentionally not copied.
     }
     // endregion CONSTRUCTORS
 
@@ -110,19 +125,21 @@ public class StructureSlot {
     public int sizeZ() { return sizeZ; }
 
     public boolean canCaptureEntities() { return captureEntities; }
+
+    public boolean isDirty() { return dirty; }
     // endregion GETTERS
 
     // region METHODS
     public void place(BlockPos minCorner) {
         isPlaced = true;
-
         occupiedArea = getProposedArea(minCorner);
+        markDirty();
     }
 
     public void Remove() {
         isPlaced = false;
-
         occupiedArea = null;
+        markDirty();
     }
 
     public BlockBox getProposedArea(BlockPos origin) {
@@ -135,5 +152,7 @@ public class StructureSlot {
                 origin.getZ() + sizeZ
         );
     }
+
+    public void markDirty() { dirty = true; }
     // endregion METHODS
 }

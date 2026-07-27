@@ -2,7 +2,6 @@ package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.ReturnSlotsPayload;
 import com.ghosty.nomadscamps.networking.ShowGUIPayload;
-import com.ghosty.nomadscamps.networking.UpdateSlotsPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
@@ -34,7 +33,21 @@ public class NomadsCampsClient implements ClientModInitializer {
         });
 
         ClientPlayNetworking.registerGlobalReceiver(ReturnSlotsPayload.ID, (payload, context) -> {
-            slots = payload.slots();
+            // TODO initialize client slots immediately upon startup.
+            //  That or move the else part of this lambda to a different packet
+            if (slots == null) {
+                slots = payload.slots();
+            // If the client's slots are already initialized, we should have just received
+            // a list of dirty slots instead that need to be updated.
+            } else {
+                for(StructureSlot newSlot : payload.slots()) {
+                    if(newSlot.isDirty())
+                        for(int oldSlotIndex = 0; oldSlotIndex < this.slots.size(); oldSlotIndex++) {
+                            if(newSlot.structureFileName.equals(this.slots.get(oldSlotIndex).structureFileName))
+                                this.slots.set(oldSlotIndex, new StructureSlot(newSlot));
+                        }
+                }
+            }
         });
         // endregion NETWORKING
 	}

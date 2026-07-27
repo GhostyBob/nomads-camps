@@ -68,11 +68,11 @@ public class NomadsCamps implements ModInitializer {
                     {
                         //Case 1 is "build"
                         case 1:
-                            CampBlockEntity.placeStructure(sender.getServerWorld(), payload.slot(), payload.origin());
+                            CampBlockEntity.placeStructure(sender, payload.slot(), payload.origin());
                             break;
                         //Case 2 is "remove"
                         case 2:
-                            CampBlockEntity.removeStructure(sender.getServerWorld(), payload.slot(), sender.getUuidAsString());
+                            CampBlockEntity.removeStructure(sender, payload.slot());
                             break;
                         //Case 3 is "save"
                         case 3:

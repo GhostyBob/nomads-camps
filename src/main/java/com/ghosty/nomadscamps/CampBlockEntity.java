@@ -1,5 +1,6 @@
 package com.ghosty.nomadscamps;
 
+import com.ghosty.nomadscamps.networking.ReturnSlotsPayload;
 import com.ghosty.nomadscamps.networking.ShowGUIPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.BlockState;
@@ -32,14 +33,13 @@ public class CampBlockEntity extends BlockEntity {
 
     // TODO have these pull from the .config
     private int numStructureSlots = 4;
-    private ArrayList<StructureSlot> structureSlots;
     // endregion FIELDS
 
     //Constructor
     public CampBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
         this.pos = pos;
-        structureSlots = new ArrayList<>(numStructureSlots);
+        //structureSlots = new ArrayList<>(numStructureSlots);
     }
 
     // region OWNERSHIP
@@ -69,7 +69,6 @@ public class CampBlockEntity extends BlockEntity {
         if(uuid == null) {
             uuid = player.getUuid();
             ownerName = player.getNameForScoreboard();
-            populateStructureSlots();
             return true;
         }
         return false;
@@ -91,41 +90,15 @@ public class CampBlockEntity extends BlockEntity {
 
     // endregion OWNERSHIP
 
-    // region STRUCTURE SLOTS
-    private void populateStructureSlots() {
-        // Look in the files for a player's list of structure slots
-        // While this block is placed, it will have the structures stored in it for easy access.
-        assert this.getWorld() != null;
-        assert this.getWorld().getServer() != null;
-        Path directory = this.getWorld().getServer()
-                .getSavePath(WorldSavePath.GENERATED)
-                .resolve(NomadsCamps.MOD_ID)
-                //.resolve(ownerName.toLowerCase())
-                .resolve("structures");
-
-        structureSlots = NomadsCamps.getStructureSlotsFromFile(directory);
-    }
-
-    private void writeStructureSlots() {
-        assert this.getWorld() != null;
-        assert this.getWorld().getServer() != null;
-        Path directory = this.getWorld().getServer()
-                .getSavePath(WorldSavePath.GENERATED)
-                .resolve(NomadsCamps.MOD_ID)
-                //.resolve(ownerName.toLowerCase())
-                .resolve("structures");
-
-        NomadsCamps.writeStructureSlotsToFile(directory, this.getStructureSlots());
-    }
-    // endregion STRUCTURE SLOTS
-
     // region STRUCTURES
-    public static boolean placeStructure(ServerWorld world, StructureSlot slot, BlockPos origin) {
+    public static boolean placeStructure(ServerPlayerEntity caller, StructureSlot slot, BlockPos origin) {
         if(slot.isPlaced())
         {
             System.out.println(slot.structureName + " is already placed!");
             return false;
         }
+
+        ServerWorld world = caller.getServerWorld();
 
         // Check if proposed placement overlaps anything
         // ppa is short for proposedPlacementArea
@@ -163,6 +136,9 @@ public class CampBlockEntity extends BlockEntity {
         {
             slot.place(origin);
             System.out.println("Successfully placed " + slot.structureName);
+            // TODO this might be overkill but we need to update the clientside slots when changes are made
+            // This version isn't as much overkill as calling updateStructureSlots every time, but is still kind of a lot.
+            returnUpdatedSlot(caller, slot);
 
             return true;
         }
@@ -171,24 +147,28 @@ public class CampBlockEntity extends BlockEntity {
         return false;
     }
 
-    public static boolean removeStructure(ServerWorld world, StructureSlot slot, String author) {
+    public static boolean removeStructure(ServerPlayerEntity caller, StructureSlot slot) {
         if (!slot.isPlaced()) {
             System.out.println(slot.structureName + " is not yet placed!");
             return false;
         }
 
-        if (saveStructure(world, slot, new BlockPos(
+        if (saveStructure(caller.getServerWorld(), slot, new BlockPos(
                 slot.getOccupiedArea().getMinX(),
                 slot.getOccupiedArea().getMinY(),
                 slot.getOccupiedArea().getMinZ()
-        ), author)) {
+        ), caller.getUuidAsString())) {
             // TODO fill slot.occupiedArea with air.
+
+            // TODO this might be overkill but we need to update the clientside slots when changes are made
+            // This version isn't as much overkill as calling updateStructureSlots every time, but is still kind of a lot.
+            returnUpdatedSlot(caller, slot);
         }
 
         return false;
     }
 
-    public static boolean saveStructure(ServerWorld world, StructureSlot slot, BlockPos origin, String author) {
+    public static boolean saveStructure(ServerWorld world, StructureSlot slot, BlockPos origin, String authorUuid) {
         Identifier structureName = Identifier.of(slot.structureName);
 
         //convert structureSize to a Vec3i
@@ -207,7 +187,7 @@ public class CampBlockEntity extends BlockEntity {
         }
         //Write the structure from the world to the template
         structureTemplate.saveFromWorld(world, origin, structureSizeInt, true, Blocks.BEDROCK);
-        structureTemplate.setAuthor(author);
+        structureTemplate.setAuthor(authorUuid);
         //Save the template
         try {
             System.out.println("Successfully saved " + structureName);
@@ -219,6 +199,26 @@ public class CampBlockEntity extends BlockEntity {
     }
 
     // endregion STRUCTURES
+
+    // region NETWORKING
+    private static void updateStructureSlots(ServerPlayerEntity player) {
+        Path structureDirectory = player.server
+                .getSavePath(WorldSavePath.GENERATED)
+                .resolve(NomadsCamps.MOD_ID)
+                //TODO reimplement each player having their own structure directory
+                //.resolve(player.getNameForScoreboard().toLowerCase())
+                .resolve("structures");
+
+        ServerPlayNetworking.send(player, new ReturnSlotsPayload(NomadsCamps.getStructureSlotsFromFile(structureDirectory)));
+    }
+
+    private static void returnUpdatedSlot(ServerPlayerEntity player, StructureSlot slot) {
+        ArrayList<StructureSlot> list = new ArrayList<>();
+        list.add(slot);
+
+        ServerPlayNetworking.send(player, new ReturnSlotsPayload(list));
+    }
+    // endregion NETWORKING
 
     // region DATA SAVING
     public UUID getUuid() { return uuid; }
@@ -232,10 +232,6 @@ public class CampBlockEntity extends BlockEntity {
             nbt.putUuid("uuid", uuid);
         if(ownerName != null)
             nbt.putString("owner", ownerName);
-
-        //TODO this might cause performance issues since we don't need to write it every time
-        //TODO also the writeNbt method might not be called if the supplies are placed when the world is closed
-        //writeStructureSlots();
     }
 
     @Override
@@ -243,12 +239,6 @@ public class CampBlockEntity extends BlockEntity {
         //super.readNbt(nbt, registries);
         if(nbt.contains("uuid")) uuid = nbt.getUuid("uuid");
         if(nbt.contains("owner")) ownerName = nbt.getString("owner");
-        populateStructureSlots();
     }
     // endregion DATA SAVING
-
-    // region GETTERS
-    public int getNumStructureSlots() { return numStructureSlots; }
-    public ArrayList <StructureSlot> getStructureSlots() { return structureSlots; }
-    // endregion GETTERS
 }
