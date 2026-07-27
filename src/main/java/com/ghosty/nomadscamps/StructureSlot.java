@@ -136,7 +136,7 @@ public class StructureSlot {
         markDirty();
     }
 
-    public void Remove() {
+    public void remove() {
         isPlaced = false;
         occupiedArea = null;
         markDirty();

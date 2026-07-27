@@ -423,7 +423,7 @@ public class CampSuppliesGUI extends Screen {
     }
 
     protected void sendRemovePacket(StructureSlot slot) {
-        ClientPlayNetworking.send(new StructureActionPayload(2, slot, (BlockPos) BlockPos.ZERO));
+        ClientPlayNetworking.send(new StructureActionPayload(2, slot, BlockPos.ORIGIN));
     }
 
     protected void sendSavePacket(StructureSlot slot, BlockPos origin) {

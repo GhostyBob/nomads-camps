@@ -30,9 +30,6 @@ public class CampBlockEntity extends BlockEntity {
 
     // region FIELDS
     private BlockPos pos;
-
-    // TODO have these pull from the .config
-    private int numStructureSlots = 4;
     // endregion FIELDS
 
     //Constructor
@@ -160,6 +157,7 @@ public class CampBlockEntity extends BlockEntity {
         ), caller.getUuidAsString())) {
             // TODO fill slot.occupiedArea with air.
 
+            slot.remove();
             // TODO this might be overkill but we need to update the clientside slots when changes are made
             // This version isn't as much overkill as calling updateStructureSlots every time, but is still kind of a lot.
             returnUpdatedSlot(caller, slot);
@@ -169,8 +167,6 @@ public class CampBlockEntity extends BlockEntity {
     }
 
     public static boolean saveStructure(ServerWorld world, StructureSlot slot, BlockPos origin, String authorUuid) {
-        Identifier structureName = Identifier.of(slot.structureName);
-
         //convert structureSize to a Vec3i
         Vec3i structureSizeInt = new Vec3i(
                 slot.sizeX(),
@@ -181,7 +177,7 @@ public class CampBlockEntity extends BlockEntity {
         StructureTemplateManager templateManager = world.getStructureTemplateManager();
         StructureTemplate structureTemplate;
         try {
-            structureTemplate = templateManager.getTemplateOrBlank(structureName);
+            structureTemplate = templateManager.getTemplateOrBlank(slot.structureFileName);
         } catch (InvalidIdentifierException e) {
             return false;
         }
@@ -190,8 +186,8 @@ public class CampBlockEntity extends BlockEntity {
         structureTemplate.setAuthor(authorUuid);
         //Save the template
         try {
-            System.out.println("Successfully saved " + structureName);
-            return templateManager.saveTemplate(structureName);
+            System.out.println("Successfully saved " + slot.structureFileName);
+            return templateManager.saveTemplate(slot.structureFileName);
         } catch (InvalidIdentifierException e) {
             return false;
         }
