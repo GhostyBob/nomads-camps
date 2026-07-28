@@ -183,10 +183,10 @@ public class NomadsCamps implements ModInitializer {
     private static ArrayList<StructureSlot> getDefaultStructureSlots() {
         // TODO have this pull from a .config
         ArrayList<StructureSlot> output = new ArrayList<>(4);
-        output.add(new StructureSlot());
-        output.add(new StructureSlot());
-        output.add(new StructureSlot());
-        output.add(new StructureSlot());
+        output.add(new StructureSlot(0));
+        output.add(new StructureSlot(1));
+        output.add(new StructureSlot(2));
+        output.add(new StructureSlot(3));
 
         return output;
     }

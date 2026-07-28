@@ -443,13 +443,12 @@ public class CampSuppliesGUI extends Screen {
 
             Collator collator = Collator.getInstance(Locale.getDefault()); //What is this??? It's something used to sort the entries
 
-            int index = 0;
             //Add entries to the list using this.addEntry(theEntryToAdd)
             for(StructureSlot s : NomadsCampsClient.instance.getSlots()) {
                 //TODO don't forget to re-do this part!
                 //Cut off the end of the string so the file extension (.nbt) isn't included
                 //String structureName = s.substring(0, s.length() - 4);
-                this.addEntry(new structureEntry(s, index++, width - 8, 40, this.getX()));
+                this.addEntry(new structureEntry(s, width - 8, 40, this.getX()));
             }
         }
 
@@ -497,13 +496,13 @@ public class CampSuppliesGUI extends Screen {
             // endregion FIELDS
 
             // Constructor
-            public structureEntry(StructureSlot slot, int index, int width, int height, int x) {
+            public structureEntry(StructureSlot slot, int width, int height, int x) {
                 this.structureSlot = slot;
                 this.name = slot.structureName;
                 this.x = x;
 
                 ButtonWidget placeButtonTemplate = ButtonWidget.builder(Text.of(name), (btn) -> {
-                    parentGui.switchScreen("structurePlacerTemp", parentGui, index);
+                    parentGui.switchScreen("structurePlacerTemp", parentGui, slot.getIndex());
                 }).dimensions(0, 0, width - height - ELEMENT_PADDING, height).build();
 
                 if(!structureSlot.isPlaced()) {
@@ -511,7 +510,7 @@ public class CampSuppliesGUI extends Screen {
                     children.add(nameButton);
                 } else {
                     nameButton = ButtonWidget.builder(Text.of("Pack up " + name), (btn) -> {
-                        parentGui.currentSlotIndex = index;
+                        parentGui.currentSlotIndex = slot.getIndex();
                         parentGui.sendRemovePacket(slot);
                         // TODO find a better way to update the list without simply rebuilding it
                         parentGui.close();
@@ -520,7 +519,7 @@ public class CampSuppliesGUI extends Screen {
                 }
 
                 editButton = ButtonWidget.builder(Text.of("E"), (btn) -> {
-                    parentGui.switchScreen("slotEditor", parentGui, index);
+                    parentGui.switchScreen("slotEditor", parentGui, slot.getIndex());
                 }).dimensions(0, 0, height, height).build();
                 children.add(editButton);
                 //other buttons...

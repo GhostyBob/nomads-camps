@@ -42,10 +42,7 @@ public class NomadsCampsClient implements ClientModInitializer {
             } else {
                 for(StructureSlot newSlot : payload.slots()) {
                     if(newSlot.isDirty())
-                        for(int oldSlotIndex = 0; oldSlotIndex < this.slots.size(); oldSlotIndex++) {
-                            if(newSlot.structureFileName.equals(this.slots.get(oldSlotIndex).structureFileName))
-                                this.slots.set(oldSlotIndex, new StructureSlot(newSlot));
-                        }
+                        this.slots.set(newSlot.getIndex(), newSlot);
                 }
             }
         });

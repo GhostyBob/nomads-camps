@@ -18,6 +18,7 @@ public class StructureSlot {
     // region FIELDS
     public String structureName;
     public Identifier structureFileName;
+    private int index;
 
     @Nullable
     private BlockBox occupiedArea;
@@ -36,6 +37,7 @@ public class StructureSlot {
             PacketCodec.of((value, buf) -> {
                         buf.writeString(value.structureName);
                         buf.writeString(value.structureFileName.toString());
+                        buf.writeInt(value.index);
                         buf.writeNullable(
                                 value.isPlaced() ?
                                         Objects.requireNonNull(value.getOccupiedArea()).getCenter() :
@@ -50,6 +52,7 @@ public class StructureSlot {
                     }, buf -> new StructureSlot(
                         buf.readString(),
                         Identifier.of(buf.readString()),
+                        buf.readInt(),
                         buf.readNullable(buf1 -> buf1.readBlockPos()),
                         buf.readInt(),
                         buf.readInt(),
@@ -60,7 +63,7 @@ public class StructureSlot {
     // endregion CODEC DEFINITION
 
     // region CONSTRUCTORS
-    public StructureSlot() {
+    public StructureSlot(int index) {
         occupiedArea = null;
         isPlaced = false;
 
@@ -70,14 +73,16 @@ public class StructureSlot {
 
         structureName = "Empty Slot";
         structureFileName = NomadsCamps.DEFAULT_STRUCTURE_FILENAME;
+        this.index = index;
 
         captureEntities = false;
     }
 
     // This constructor should only be used by the codec defined above
-    private StructureSlot(String name, Identifier fileName, @Nullable BlockPos center, int sizeX, int sizeY, int sizeZ, boolean captureEntities, boolean dirty) {
+    private StructureSlot(String name, Identifier fileName, int index, @Nullable BlockPos center, int sizeX, int sizeY, int sizeZ, boolean captureEntities, boolean dirty) {
         structureName = name;
         structureFileName = fileName;
+        this.index = index;
 
         isPlaced = center != null;
         if (isPlaced) {
@@ -113,9 +118,14 @@ public class StructureSlot {
         captureEntities = dirtySlot.captureEntities;
         // The dirty field is intentionally not copied.
     }
+
+    // Honorary constructor
+    public static final StructureSlot EMPTY = new StructureSlot(-1);
     // endregion CONSTRUCTORS
 
     // region GETTERS
+    public int getIndex() { return index; }
+
     public @Nullable BlockBox getOccupiedArea() { return occupiedArea; }
 
     public boolean isPlaced() { return isPlaced; }
