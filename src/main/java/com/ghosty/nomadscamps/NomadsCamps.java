@@ -9,7 +9,7 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import org.slf4j.Logger;
@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 
 import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
@@ -27,8 +26,11 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public class NomadsCamps implements ModInitializer {
+
+    // region FIELDS
     // TODO fill out fabric.mod.json and README.md
     public static final String MOD_ID = "nomads-camps";
+    public static final Identifier DEFAULT_STRUCTURE_FILENAME = Identifier.of(MOD_ID + ":emptyplot");
 
 	// This logger is used to write text to the console and the log file.
 	// It is considered best practice to use your mod id as the logger's name.
@@ -36,7 +38,9 @@ public class NomadsCamps implements ModInitializer {
     // TODO replace sysout printlns with logger writes
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	@Override
+    // endregion FIELDS
+
+    @Override
 	public void onInitialize() {
 		// This code runs as soon as Minecraft is in a mod-load-ready state.
 		// However, some things (like resources) may still be uninitialized.
@@ -46,91 +50,80 @@ public class NomadsCamps implements ModInitializer {
         ModBlockEntities.initialize();
 
         // region NETWORKING
-        PayloadTypeRegistry.playS2C().register(CampSuppliesGUIPayload.ID, CampSuppliesGUIPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(CampBlockSetOwnerPayload.ID, CampBlockSetOwnerPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(CampBlockSavePayload.ID, CampBlockSavePayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(CampBlockBuildPayload.ID, CampBlockBuildPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(QueryStructuresPayload.ID, QueryStructuresPayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(ReturnStructuresPayload.ID, ReturnStructuresPayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(ReturnStructureSlotsPayload.ID, ReturnStructureSlotsPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(CampBlockRemovePayload.ID, CampBlockRemovePayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(StructureActionPayload.ID, StructureActionPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(SetOwnerPayload.ID, SetOwnerPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(UpdateSlotsPayload.ID, UpdateSlotsPayload.CODEC);
 
-        ServerPlayNetworking.registerGlobalReceiver(CampBlockSetOwnerPayload.ID,
+        PayloadTypeRegistry.playS2C().register(ShowGUIPayload.ID, ShowGUIPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(ReturnSlotsPayload.ID, ReturnSlotsPayload.CODEC);
+
+        ServerPlayNetworking.registerGlobalReceiver(StructureActionPayload.ID,
                 (payload, context) -> {
                     ServerPlayerEntity sender = context.player();
-                    CampBlockEntity supplies = getCampBlockAtPos(payload.suppliesPos(), sender);
 
-                    if(supplies.setOwner(sender))
-                        System.out.println("Owner set!");
-                });
+                    switch(payload.type())
+                    {
+                        //Case 1 is "build"
+                        case 1:
+                            CampBlockEntity.placeStructure(sender, payload.slot(), payload.origin());
+                            break;
+                        //Case 2 is "remove"
+                        case 2:
+                            CampBlockEntity.removeStructure(sender, payload.slot());
+                            break;
+                        //Case 3 is "save"
+                        case 3:
+                            CampBlockEntity.saveStructure(sender.getServerWorld(), payload.slot(), new BlockPos(
+                                    payload.slot().getOccupiedArea().getMinX(),
+                                    payload.slot().getOccupiedArea().getMinY(),
+                                    payload.slot().getOccupiedArea().getMinZ()),
+                                    sender.getUuidAsString());
+                            break;
+                        default:
+                            break;
+                    }
+        });
 
-        ServerPlayNetworking.registerGlobalReceiver(CampBlockSavePayload.ID,
+        ServerPlayNetworking.registerGlobalReceiver(SetOwnerPayload.ID,
                 (payload, context) -> {
-                    //access payload data using payload.fieldName();
-                    ServerPlayerEntity sender = context.player();
-                    CampBlockEntity supplies = getCampBlockAtPos(payload.suppliesPos(), sender);
-
-                    if(!supplies.saveStructure(payload.structName(), payload.origin(), payload.size()))
-                        System.out.println("Structure failed to save!");
-                });
-
-        ServerPlayNetworking.registerGlobalReceiver(CampBlockBuildPayload.ID,
-                (payload, context) -> {
-                    ServerPlayerEntity sender = context.player();
-                    CampBlockEntity supplies = getCampBlockAtPos(payload.suppliesPos(), sender);
-
-                    if(!supplies.placeStructure((ServerWorld) sender.getWorld(), payload.structureName(), payload.origin()))
-                            System.out.println("Structure failed to place!");
-                });
-
-        // Old implementation; only returns the names of structures when queried
-//        ServerPlayNetworking.registerGlobalReceiver(QueryStructuresPayload.ID,
-//                (payload, context) -> {
 //                    ServerPlayerEntity sender = context.player();
+//                    CampBlockEntity supplies = getCampBlockAtPos(payload.suppliesPos(), sender);
 //
-//                    Path structureDirectory = sender.server
-//                            .getSavePath(WorldSavePath.GENERATED)
-//                            .resolve(MOD_ID)
-//                            //TODO reimplement each player having their own structure directory
-//                            //.resolve(sender.getNameForScoreboard().toLowerCase())
-//                            .resolve("structures");
-//
-//                    // Return to sender!
-//                    ServerPlayNetworking.send(sender, new ReturnStructuresPayload(getKnownStructuresFromFile(structureDirectory)));
-//                });
+//                    if(supplies.setOwner(sender))
+//                         System.out.println("Owner set!");
+        });
 
-        // New implementation; returns the list of StructureSlots when queried
-        ServerPlayNetworking.registerGlobalReceiver(QueryStructuresPayload.ID,
+        ServerPlayNetworking.registerGlobalReceiver(UpdateSlotsPayload.ID,
                 (payload, context) -> {
-                    ServerPlayerEntity sender = context.player();
-                    ArrayList<StructureSlot> slots = getCampBlockAtPos(payload.suppliesPos(), sender).getStructureSlots();;
+                    Path structureDirectory = context.player().server
+                            .getSavePath(WorldSavePath.GENERATED)
+                            .resolve(MOD_ID)
+                            //TODO reimplement each player having their own structure directory
+                            //.resolve(context.player().getNameForScoreboard().toLowerCase())
+                            .resolve("structures");
 
-                    // Return to sender!
-                    ServerPlayNetworking.send(sender, new ReturnStructureSlotsPayload(slots));
-                });
+                    if(payload.changed())
+                    {
+                        // Write the received slot list into the files
+                        writeStructureSlotsToFile(structureDirectory, payload.slots());
+                    }
+
+                    // Even if you just got a structure list, rebuild it from the files just to be safe
+                    ServerPlayNetworking.send(
+                            context.player(),
+                            new ReturnSlotsPayload(
+                                    getStructureSlotsFromFile(structureDirectory)
+                            ));
+        });
         // endregion NETWORKING
 	}
 
     // region HELPER METHODS
-    public ArrayList<String> getKnownStructuresFromFile(Path structureDirectory) {
-        try(Stream<Path> files = Files.list(structureDirectory)) {
-            List<Path> list = files.filter(Files::isRegularFile).toList();
-            ArrayList<String> structureNames = new ArrayList<>();
-            for(Path file : list) {
-                structureNames.add(file.subpath(file.getNameCount() - 1, file.getNameCount()).toString());
-            }
-            return structureNames;
-        } catch(IOException e) {
-            //IDK man
-            return null;
-        }
-    }
-
     public static ArrayList<StructureSlot> getStructureSlotsFromFile(Path structureDirectory) {
         Path file = structureDirectory.resolve("slots.json");
-        ArrayList<StructureSlot> structureSlots = new ArrayList<>();
-
+        ArrayList<StructureSlot> structureSlots;
         Gson jsonParser = new GsonBuilder().create();
+
         if(Files.exists(file)) {
             try (Reader reader = Files.newBufferedReader(file)) {
                 structureSlots = (jsonParser.fromJson(reader, new TypeToken<ArrayList<StructureSlot>>(){}));
@@ -138,27 +131,41 @@ public class NomadsCamps implements ModInitializer {
                 //IDK man
                 return null;
             }
+        } else {
+            structureSlots = getDefaultStructureSlots();
+            writeStructureSlotsToFile(structureDirectory, structureSlots);
         }
 
         return structureSlots;
     }
 
-    public static boolean writeStructureSlotsToFile(Path structureDirectory, CampBlockEntity supplies) {
+    public static boolean writeStructureSlotsToFile(Path structureDirectory, ArrayList<StructureSlot> slots) {
         Path target = structureDirectory.resolve("slots.json");
         Gson jsonParser = new GsonBuilder().create();
 
+        // TODO should this be in front of target's initialization?
+        //  See the try statement at the start of getStructureSlotsFromFile
         try {
             Files.createDirectories(target.getParent());
         } catch (IOException e) {
             return false;
         }
         try(BufferedWriter writer = Files.newBufferedWriter(target)) {
-            jsonParser.toJson(supplies.getStructureSlots(), writer);
+            jsonParser.toJson(slots, writer);
         } catch (IOException e) {
             return false;
         }
 
         return true;
+    }
+
+    public static List<Path> getStructureFileNames(Path structureDirectory) {
+        try(Stream<Path> files = Files.list(structureDirectory)) {
+            return files.filter(Files::isRegularFile).toList();
+        } catch(IOException e) {
+            //IDK man
+            return null;
+        }
     }
 
     private CampBlockEntity getCampBlockAtPos(BlockPos pos, ServerPlayerEntity sender)
@@ -171,6 +178,17 @@ public class NomadsCamps implements ModInitializer {
             //TODO add dimension/world checking. Might already be handled by sender.getWorld()
             throw(new NullPointerException("Given location does not contain camp supplies!"));
         }
+    }
+
+    private static ArrayList<StructureSlot> getDefaultStructureSlots() {
+        // TODO have this pull from a .config
+        ArrayList<StructureSlot> output = new ArrayList<>(4);
+        output.add(new StructureSlot(0));
+        output.add(new StructureSlot(1));
+        output.add(new StructureSlot(2));
+        output.add(new StructureSlot(3));
+
+        return output;
     }
     // endregion HELPER METHODS
 }
