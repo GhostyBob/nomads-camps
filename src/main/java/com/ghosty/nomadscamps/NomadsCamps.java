@@ -8,10 +8,8 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import org.slf4j.Logger;
@@ -19,11 +17,9 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 
 import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +30,7 @@ public class NomadsCamps implements ModInitializer {
     // region FIELDS
     // TODO fill out fabric.mod.json and README.md
     public static final String MOD_ID = "nomads-camps";
+    public static final Identifier DEFAULT_STRUCTURE_FILENAME = Identifier.of(MOD_ID + ":emptyplot");
 
 	// This logger is used to write text to the console and the log file.
 	// It is considered best practice to use your mod id as the logger's name.
@@ -160,6 +157,15 @@ public class NomadsCamps implements ModInitializer {
         }
 
         return true;
+    }
+
+    public static List<Path> getStructureFileNames(Path structureDirectory) {
+        try(Stream<Path> files = Files.list(structureDirectory)) {
+            return files.filter(Files::isRegularFile).toList();
+        } catch(IOException e) {
+            //IDK man
+            return null;
+        }
     }
 
     private CampBlockEntity getCampBlockAtPos(BlockPos pos, ServerPlayerEntity sender)

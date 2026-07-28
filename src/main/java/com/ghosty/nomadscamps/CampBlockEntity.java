@@ -25,9 +25,9 @@ import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3i;
 
+import java.io.StringReader;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
 public class CampBlockEntity extends BlockEntity {
@@ -94,45 +94,105 @@ public class CampBlockEntity extends BlockEntity {
 
     // region STRUCTURES
     public static boolean placeStructure(ServerPlayerEntity caller, StructureSlot slot, BlockPos origin) {
-        if(slot.isPlaced())
-        {
-            System.out.println(slot.structureName + " is already placed!");
-            return false;
-        }
+        boolean result;
 
-        ServerWorld world = caller.getServerWorld();
-
-        // Check if proposed placement overlaps anything
-        // ppa is short for proposedPlacementArea
-        BlockBox ppa = slot.getProposedArea(origin);
-        for(BlockPos pos : BlockPos.iterate(
-                ppa.getMinX(), ppa.getMinY(), ppa.getMinZ(),
-                ppa.getMaxX(), ppa.getMaxY(), ppa.getMaxZ())) {
-            if(!world.getBlockState(pos).isAir()) {
-                System.out.println("The proposed area has blocks in it!");
+        if(!slot.structureFileName.equals(NomadsCamps.DEFAULT_STRUCTURE_FILENAME)) {
+            if (slot.isPlaced()) {
+                System.out.println(slot.structureName + " is already placed!");
                 return false;
             }
+
+            ServerWorld world = caller.getServerWorld();
+
+            // Check if proposed placement overlaps anything
+            // ppa is short for proposedPlacementArea
+            BlockBox ppa = slot.getProposedArea(origin);
+            for (BlockPos pos : BlockPos.iterate(
+                    ppa.getMinX(), ppa.getMinY(), ppa.getMinZ(),
+                    ppa.getMaxX(), ppa.getMaxY(), ppa.getMaxZ())) {
+                if (!world.getBlockState(pos).isAir()) {
+                    System.out.println("The proposed area has blocks in it!");
+                    return false;
+                }
+            }
+
+            // Get a StructureTemplate, given the name of a structure
+            StructureTemplate template;
+            StructureTemplateManager templateManager = world.getStructureTemplateManager();
+            try {
+                template = templateManager.getTemplateOrBlank(slot.structureFileName);
+            } catch (InvalidIdentifierException e) {
+                return false;
+            }
+
+            // place the template
+            StructurePlacementData structurePlacementData = (new StructurePlacementData())/*.setMirror(this.mirror).setRotation(this.rotation).setIgnoreEntities(this.ignoreEntities)*/;
+
+            result = template.place(
+                    world,
+                    origin,
+                    new BlockPos(0, 0, 0),
+                    structurePlacementData,
+                    null,
+                    2);
+        } else {
+            // Logic for placing a new slot for the first time
+
+            // region FILENAME FINDING
+            // Get a valid filename
+            String name = slot.structureName.toLowerCase(Locale.ROOT);
+            Identifier proposedFilename = Identifier.tryParse(NomadsCamps.MOD_ID, name);
+            if (proposedFilename == null) {
+                // Logic for manually building a valid file name
+                StringBuilder builder = new StringBuilder();
+                int index, prevIndex = 0;
+                for(index = 0; index < name.length(); index++)
+                    if(!Identifier.isCharValid(name.charAt(index))) {
+                        if(index - prevIndex > 0)
+                            builder.append(name, prevIndex, index);
+                        prevIndex = index + 1;
+                    }
+                proposedFilename = Identifier.of(NomadsCamps.MOD_ID, builder.toString());
+            }
+
+            // Check other filenames for duplicates
+            List<Path> filenames = NomadsCamps.getStructureFileNames(caller.server
+                    .getSavePath(WorldSavePath.GENERATED)
+                    .resolve(NomadsCamps.MOD_ID)
+                    //TODO reimplement each player having their own structure directory
+                    //.resolve(caller.getNameForScoreboard().toLowerCase())
+                    .resolve("structures"));
+            boolean checkingDuplicates;
+
+            do {
+                checkingDuplicates = false;
+                for (Path p : filenames) {
+                    String pName = p.subpath(p.getNameCount() - 1, p.getNameCount()).toString();
+                    if (pName.substring(0, (pName.length() - 4)).equals(proposedFilename.getPath())) {
+                        //We have a duplicate: append a number and start over
+                        checkingDuplicates = true;
+                        String proposedPath = proposedFilename.getPath();
+                        char lastChar = proposedPath.charAt(proposedPath.length() - 1);
+                        if (lastChar >= '0' && lastChar < '9') {
+                            proposedPath = proposedPath.substring(0, proposedPath.length() - 1) + (++lastChar);
+                        } else if (lastChar == '9') {
+                            proposedPath = proposedPath.substring(0, proposedPath.length() - 2) + (proposedPath.charAt(proposedPath.length() - 2) + 1);
+                        } else {
+                            proposedPath += "00";
+                        }
+                        proposedFilename = Identifier.of(NomadsCamps.MOD_ID, proposedPath);
+                        break;
+                    }
+                }
+            } while (checkingDuplicates);
+            System.out.println("Found valid identifier: " + proposedFilename.toString());
+            // endregion FILENAME FINDING
+            // At this point, we know proposedFilename is a valid Identifier and isn't a duplicate.
+            slot.structureFileName = proposedFilename;
+            StructureTemplateManager templateManager = caller.getServerWorld().getStructureTemplateManager();
+            templateManager.getTemplateOrBlank(proposedFilename);
+            result = templateManager.saveTemplate(proposedFilename);
         }
-
-        // Get a StructureTemplate, given the name of a structure
-        StructureTemplate template;
-        StructureTemplateManager templateManager = world.getStructureTemplateManager();
-        try {
-            template = templateManager.getTemplateOrBlank(slot.structureFileName);
-        } catch (InvalidIdentifierException e) {
-            return false;
-        }
-
-        // place the template
-        StructurePlacementData structurePlacementData = (new StructurePlacementData())/*.setMirror(this.mirror).setRotation(this.rotation).setIgnoreEntities(this.ignoreEntities)*/;
-
-        boolean result = template.place(
-                world,
-                origin,
-                new BlockPos(0, 0, 0),
-                structurePlacementData,
-                null,
-                2);
 
         if (result)
         {
@@ -214,6 +274,7 @@ public class CampBlockEntity extends BlockEntity {
         return true;
     }
 
+    // region FANCY FILL AREA
     // TODO I really love the look of this effect, but it might be exploitable if players mine
     //  and collect blocks before they're removed. It's probably better to replace all the actual
     //  blocks with display entities or something beforehand.
@@ -255,6 +316,7 @@ public class CampBlockEntity extends BlockEntity {
 
         // Mark changed chunks dirty?
     }
+    // endregion FANCY FILL AREA
 
     // endregion STRUCTURES
 

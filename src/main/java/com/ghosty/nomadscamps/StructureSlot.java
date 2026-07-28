@@ -69,7 +69,7 @@ public class StructureSlot {
         sizeZ = 4;
 
         structureName = "Empty Slot";
-        structureFileName = Identifier.of("nomads-camps:emptyplot");
+        structureFileName = NomadsCamps.DEFAULT_STRUCTURE_FILENAME;
 
         captureEntities = false;
     }
