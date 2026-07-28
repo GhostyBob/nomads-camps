@@ -2,13 +2,16 @@ package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.ReturnSlotsPayload;
 import com.ghosty.nomadscamps.networking.ShowGUIPayload;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.registry.tag.TagKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.structure.StructurePlacementData;
@@ -25,11 +28,13 @@ import net.minecraft.util.math.Vec3i;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 
 public class CampBlockEntity extends BlockEntity {
 
     // region FIELDS
     private BlockPos pos;
+
     // endregion FIELDS
 
     //Constructor
@@ -155,7 +160,8 @@ public class CampBlockEntity extends BlockEntity {
                 slot.getOccupiedArea().getMinY(),
                 slot.getOccupiedArea().getMinZ()
         ), caller.getUuidAsString())) {
-            // TODO fill slot.occupiedArea with air.
+            //fillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
+            fancyFillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
 
             slot.remove();
             // TODO this might be overkill but we need to update the clientside slots when changes are made
@@ -192,6 +198,62 @@ public class CampBlockEntity extends BlockEntity {
             return false;
         }
 
+    }
+
+    private static boolean fillArea(ServerWorld world, BlockBox area, BlockState state) {
+        // Fill the area
+        for (BlockPos pos : BlockPos.iterate(
+                new BlockPos(area.getMinX(), area.getMinY(), area.getMinZ()),
+                new BlockPos(area.getMaxX(), area.getMaxY(), area.getMaxZ()))) {
+            // TODO try and compare against a list of blocks using BlockState.isIn(TagKey<Block>)
+            //  world.getBlockState(new BlockPos(x, y, z)).isIn(\* something *\);
+            world.setBlockState(pos, state, Block.NOTIFY_ALL);
+        }
+        // Mark changed chunks dirty?
+
+        return true;
+    }
+
+    // TODO I really love the look of this effect, but it might be exploitable if players mine
+    //  and collect blocks before they're removed. It's probably better to replace all the actual
+    //  blocks with display entities or something beforehand.
+    private static boolean fancyFillArea(ServerWorld world, BlockBox area, BlockState state) {
+        Thread fancyFillThread = new Thread(() -> _fancyFillArea(world, area, state));
+        fancyFillThread.start();
+
+        return true;
+    }
+
+    private static final int TICK_DELAY_BETWEEN_REMOVALS = 10;
+
+    private static void _fancyFillArea(ServerWorld world, BlockBox area, BlockState state) {
+        int layerSize = area.getBlockCountX() * area.getBlockCountZ();
+        int layerCounter = 0;
+
+        // Fill the area
+        try {
+            for (BlockPos pos : BlockPos.iterate(
+                    new BlockPos(area.getMinX(), area.getMinY(), area.getMinZ()),
+                    new BlockPos(area.getMaxX(), area.getMaxY(), area.getMaxZ()))) {
+                // TODO try and compare against a list of blocks using BlockState.isIn(TagKey<Block>)
+                //  world.getBlockState(new BlockPos(x, y, z)).isIn(\* something *\);
+                world.setBlockState(pos, state, Block.NOTIFY_ALL);
+                layerCounter++;
+
+                if (layerCounter >= layerSize) {
+                    // TODO find a more elegant way to wait a little bit before continuing.
+                    //  Try to sync it to game ticks?
+                    layerCounter = 0;
+                    Thread.sleep(50);
+                }
+            }
+        } catch (InterruptedException e) {
+            // Fall back to the boring method if something goes south.
+            System.out.println("Interrupted :(");
+            fillArea(world, area, state);
+        }
+
+        // Mark changed chunks dirty?
     }
 
     // endregion STRUCTURES

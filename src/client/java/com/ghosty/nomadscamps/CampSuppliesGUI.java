@@ -502,15 +502,19 @@ public class CampSuppliesGUI extends Screen {
                 this.name = slot.structureName;
                 this.x = x;
 
+                ButtonWidget placeButtonTemplate = ButtonWidget.builder(Text.of(name), (btn) -> {
+                    parentGui.switchScreen("structurePlacerTemp", parentGui, index);
+                }).dimensions(0, 0, width - height - ELEMENT_PADDING, height).build();
+
                 if(!structureSlot.isPlaced()) {
-                    nameButton = ButtonWidget.builder(Text.of(name), (btn) -> {
-                        parentGui.switchScreen("structurePlacerTemp", parentGui, index);
-                    }).dimensions(0, 0, width - height - ELEMENT_PADDING, height).build();
+                    nameButton = placeButtonTemplate;
                     children.add(nameButton);
                 } else {
                     nameButton = ButtonWidget.builder(Text.of("Pack up " + name), (btn) -> {
                         parentGui.currentSlotIndex = index;
                         parentGui.sendRemovePacket(slot);
+                        // TODO find a better way to update the list without simply rebuilding it
+                        parentGui.close();
                     }).dimensions(0, 0, width - height - ELEMENT_PADDING, height).build();
                     children.add(nameButton);
                 }
