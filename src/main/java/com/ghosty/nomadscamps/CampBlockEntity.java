@@ -187,8 +187,6 @@ public class CampBlockEntity extends BlockEntity {
         {
             slot.place(origin);
             System.out.println("Successfully placed " + slot.structureName);
-            // TODO this might be overkill but we need to update the clientside slots when changes are made
-            // This version isn't as much overkill as calling updateStructureSlots every time, but is still kind of a lot.
             returnUpdatedSlot(caller, slot);
 
             return true;
@@ -213,8 +211,6 @@ public class CampBlockEntity extends BlockEntity {
             //fancyFillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
 
             slot.remove();
-            // TODO this might be overkill but we need to update the clientside slots when changes are made
-            // This version isn't as much overkill as calling updateStructureSlots every time, but is still kind of a lot.
             returnUpdatedSlot(caller, slot);
         }
 

@@ -34,8 +34,6 @@ public class NomadsCampsClient implements ClientModInitializer {
         });
 
         ClientPlayNetworking.registerGlobalReceiver(ReturnSlotsPayload.ID, (payload, context) -> {
-            // TODO initialize client slots immediately upon startup.
-            //  That or move the else part of this lambda to a different packet
             if (slots == null) {
                 slots = payload.slots();
             // If the client's slots are already initialized, we should have just received
