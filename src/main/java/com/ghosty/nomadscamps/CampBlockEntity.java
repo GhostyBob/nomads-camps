@@ -2,6 +2,7 @@ package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.ReturnSlotsPayload;
 import com.ghosty.nomadscamps.networking.ShowGUIPayload;
+import com.ghosty.nomadscamps.util.ModTags;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
@@ -297,8 +298,8 @@ public class CampBlockEntity extends BlockEntity {
                     new BlockPos(area.getMinX(), area.getMinY(), area.getMinZ()),
                     new BlockPos(area.getMaxX(), area.getMaxY(), area.getMaxZ()))) {
                 // TODO try and compare against a list of blocks using BlockState.isIn(TagKey<Block>)
-                //  world.getBlockState(new BlockPos(x, y, z)).isIn(\* something *\);
-                world.setBlockState(pos, state, Block.NOTIFY_ALL);
+                if (!world.getBlockState(pos).isIn(ModTags.Blocks.PACKING_IGNORED_BLOCKS))
+                    world.setBlockState(pos, state, Block.NOTIFY_ALL);
                 layerCounter++;
 
                 if (layerCounter >= layerSize) {
