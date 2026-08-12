@@ -87,14 +87,14 @@ public class StructureSlot {
         structureFileName = fileName;
         this.index = index;
 
+        this.sizeX = sizeX;
+        this.sizeY = sizeY;
+        this.sizeZ = sizeZ;
+
         isPlaced = min != null;
         if (isPlaced) {
             occupiedArea = getProposedArea(min);
         } else occupiedArea = null;
-
-        this.sizeX = sizeX;
-        this.sizeY = sizeY;
-        this.sizeZ = sizeZ;
 
         this.captureEntities = captureEntities;
         this.dirty = dirty;
