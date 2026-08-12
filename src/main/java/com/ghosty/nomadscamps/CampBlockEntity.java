@@ -1,9 +1,9 @@
 package com.ghosty.nomadscamps;
 
+import com.ghosty.nomadscamps.util.TaggedStructureTemplate;
 import com.ghosty.nomadscamps.networking.ReturnSlotsPayload;
 import com.ghosty.nomadscamps.networking.ShowGUIPayload;
 import com.ghosty.nomadscamps.util.ModTags;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -12,7 +12,6 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.registry.tag.TagKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.structure.StructurePlacementData;
@@ -26,10 +25,8 @@ import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3i;
 
-import java.io.StringReader;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
 
 public class CampBlockEntity extends BlockEntity {
 
@@ -249,7 +246,7 @@ public class CampBlockEntity extends BlockEntity {
             return false;
         }
         //Write the structure from the world to the template
-        structureTemplate.saveFromWorld(world, origin, structureSizeInt, true, Blocks.BEDROCK);
+        ((TaggedStructureTemplate) structureTemplate).nomads_camps$taggedSaveFromWorld(world, origin, structureSizeInt, true, ModTags.Blocks.PACKING_IGNORED_BLOCKS);
         structureTemplate.setAuthor(authorUuid);
         //Save the template
         try {
@@ -279,6 +276,8 @@ public class CampBlockEntity extends BlockEntity {
     // TODO I really love the look of this effect, but it might be exploitable if players mine
     //  and collect blocks before they're removed. It's probably better to replace all the actual
     //  blocks with display entities or something beforehand.
+    //  It is totally exploitable since double wide blocks like beds will pop off and drop
+    //  themselves while being removed.
     private static boolean fancyFillArea(ServerWorld world, BlockBox area, BlockState state) {
         Thread fancyFillThread = new Thread(() -> _fancyFillArea(world, area, state));
         fancyFillThread.start();
