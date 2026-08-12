@@ -218,8 +218,8 @@ public class CampBlockEntity extends BlockEntity {
                 slot.getOccupiedArea().getMinY(),
                 slot.getOccupiedArea().getMinZ()
         ), caller.getUuidAsString())) {
-            //fillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
-            fancyFillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
+            fillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
+            //fancyFillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
 
             slot.remove();
             // TODO this might be overkill but we need to update the clientside slots when changes are made
@@ -263,29 +263,24 @@ public class CampBlockEntity extends BlockEntity {
         for (BlockPos pos : BlockPos.iterate(
                 new BlockPos(area.getMinX(), area.getMinY(), area.getMinZ()),
                 new BlockPos(area.getMaxX(), area.getMaxY(), area.getMaxZ()))) {
-            // TODO try and compare against a list of blocks using BlockState.isIn(TagKey<Block>)
-            //  world.getBlockState(new BlockPos(x, y, z)).isIn(\* something *\);
-            world.setBlockState(pos, state, Block.NOTIFY_ALL);
+            if (!world.getBlockState(pos).isIn(ModTags.Blocks.PACKING_IGNORED_BLOCKS))
+                world.setBlockState(pos, state, Block.NOTIFY_ALL);
         }
         // Mark changed chunks dirty?
 
         return true;
     }
 
+    // TODO I really love the look of this effect, but it's too janky and exploitable at the moment
+    //  It's probably better to replace all the actual blocks with display entities or something beforehand.
+    //  Until I can find a better solution, I'm switching to fillArea
     // region FANCY FILL AREA
-    // TODO I really love the look of this effect, but it might be exploitable if players mine
-    //  and collect blocks before they're removed. It's probably better to replace all the actual
-    //  blocks with display entities or something beforehand.
-    //  It is totally exploitable since double wide blocks like beds will pop off and drop
-    //  themselves while being removed.
     private static boolean fancyFillArea(ServerWorld world, BlockBox area, BlockState state) {
         Thread fancyFillThread = new Thread(() -> _fancyFillArea(world, area, state));
         fancyFillThread.start();
 
         return true;
     }
-
-    private static final int TICK_DELAY_BETWEEN_REMOVALS = 10;
 
     private static void _fancyFillArea(ServerWorld world, BlockBox area, BlockState state) {
         int layerSize = area.getBlockCountX() * area.getBlockCountZ();
@@ -296,7 +291,6 @@ public class CampBlockEntity extends BlockEntity {
             for (BlockPos pos : BlockPos.iterate(
                     new BlockPos(area.getMinX(), area.getMinY(), area.getMinZ()),
                     new BlockPos(area.getMaxX(), area.getMaxY(), area.getMaxZ()))) {
-                // TODO try and compare against a list of blocks using BlockState.isIn(TagKey<Block>)
                 if (!world.getBlockState(pos).isIn(ModTags.Blocks.PACKING_IGNORED_BLOCKS))
                     world.setBlockState(pos, state, Block.NOTIFY_ALL);
                 layerCounter++;
@@ -313,7 +307,6 @@ public class CampBlockEntity extends BlockEntity {
             System.out.println("Interrupted :(");
             fillArea(world, area, state);
         }
-
         // Mark changed chunks dirty?
     }
     // endregion FANCY FILL AREA
