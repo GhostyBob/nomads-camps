@@ -40,7 +40,10 @@ public class StructureSlot {
                         buf.writeInt(value.index);
                         buf.writeNullable(
                                 value.isPlaced() ?
-                                        Objects.requireNonNull(value.getOccupiedArea()).getCenter() :
+                                        new BlockPos(
+                                                value.getOccupiedArea().getMinX(),
+                                                value.getOccupiedArea().getMinY(),
+                                                value.getOccupiedArea().getMinZ()) :
                                         null,
                                 (buf1, value1) -> buf1.writeBlockPos(value1)
                         );
@@ -79,24 +82,14 @@ public class StructureSlot {
     }
 
     // This constructor should only be used by the codec defined above
-    private StructureSlot(String name, Identifier fileName, int index, @Nullable BlockPos center, int sizeX, int sizeY, int sizeZ, boolean captureEntities, boolean dirty) {
+    private StructureSlot(String name, Identifier fileName, int index, @Nullable BlockPos min, int sizeX, int sizeY, int sizeZ, boolean captureEntities, boolean dirty) {
         structureName = name;
         structureFileName = fileName;
         this.index = index;
 
-        isPlaced = center != null;
+        isPlaced = min != null;
         if (isPlaced) {
-            // TODO scrutinize these formulae a bit more
-            occupiedArea = new BlockBox(
-                    // min = center - ((size + 1) / 2)
-                    center.getX() - ((sizeX + 1) / 2),
-                    center.getY() - ((sizeY + 1) / 2),
-                    center.getZ() - ((sizeZ + 1) / 2),
-                    // max = center - ((3size + 1) / 2)
-                    center.getX() - ((sizeX + 1) / 2) + sizeX,
-                    center.getY() - ((sizeY + 1) / 2) + sizeY,
-                    center.getZ() - ((sizeZ + 1) / 2) + sizeZ
-                    );
+            occupiedArea = getProposedArea(min);
         } else occupiedArea = null;
 
         this.sizeX = sizeX;
@@ -157,9 +150,9 @@ public class StructureSlot {
                 origin.getX(),
                 origin.getY(),
                 origin.getZ(),
-                origin.getX() + sizeX,
-                origin.getY() + sizeY,
-                origin.getZ() + sizeZ
+                origin.getX() + sizeX - 1,
+                origin.getY() + sizeY - 1,
+                origin.getZ() + sizeZ - 1
         );
     }
 

@@ -198,7 +198,7 @@ public class CampSuppliesGUI extends Screen {
         TextFieldWidget nameField = new TextFieldWidget(
                 textRenderer,
                 width / 2 - 100,
-                height / 2 - backgroundHeight / 3 + 10,
+                height / 2 - backgroundHeight / 2 + 10,
                 200,
                 20,
                 Text.of("Structure Name")
@@ -218,7 +218,7 @@ public class CampSuppliesGUI extends Screen {
         Text slotSize = Text.of(slotDescBuilder.toString());
 
         TextWidget slotSizeDescription = new TextWidget(
-                width / 2 - backgroundWidth / 2 + 10,
+                width / 2 - backgroundWidth / 2,
                 height / 2 - backgroundHeight / 2 + 40,
                 backgroundWidth,
                 textRenderer.fontHeight,
@@ -227,16 +227,25 @@ public class CampSuppliesGUI extends Screen {
         this.addDrawableChild(slotSizeDescription);
 
         slotDescBuilder = new StringBuilder("This structure ");
-        if(currentSlot.isPlaced()) {
-            slotDescBuilder.append("currently occupies: ");
-            slotDescBuilder.append(currentSlot.getOccupiedArea().toString());
+        if(currentSlot.structureFileName.equals(NomadsCamps.DEFAULT_STRUCTURE_FILENAME))
+        {
+            slotDescBuilder.append("has never been placed.");
+        }
+        else if(currentSlot.isPlaced()) {
+            slotDescBuilder.append("is placed near ");
+            slotDescBuilder.append(currentSlot.getOccupiedArea().getMinX());
+            slotDescBuilder.append(", ");
+            slotDescBuilder.append(currentSlot.getOccupiedArea().getMinY());
+            slotDescBuilder.append(", ");
+            slotDescBuilder.append(currentSlot.getOccupiedArea().getMinZ());
+            slotDescBuilder.append(".");
         } else {
             slotDescBuilder.append("is currently in storage.");
         }
         Text slotPosition = Text.of(slotDescBuilder.toString());
 
         TextWidget slotPosDescription = new TextWidget(
-                width / 2 - backgroundWidth / 2 + 10,
+                width / 2 - backgroundWidth / 2,
                 height / 2 - backgroundHeight / 2 + 42 + textRenderer.fontHeight,
                 backgroundWidth,
                 textRenderer.fontHeight,
