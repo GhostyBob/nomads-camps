@@ -124,11 +124,7 @@ public class CampSuppliesGUI extends Screen {
 
         //Fetch saved structures
         if (NomadsCampsClient.instance.getSlots() == null) {
-            ClientPlayNetworking.send(new UpdateSlotsPayload(false, new ArrayList<>()));
-
-            // Spinning up a thread just to populate this list might be overly memory-intensive
-            Thread structureListWaiter = new Thread(this::receiveStructures);
-            structureListWaiter.start();
+            queryStructures();
         } else {
             structureListWidget structureList = new structureListWidget(client,
                     backgroundWidth - 15,
@@ -308,6 +304,14 @@ public class CampSuppliesGUI extends Screen {
     // endregion HELPER METHODS
 
     // region NETWORKING
+    private void queryStructures() {
+        ClientPlayNetworking.send(new UpdateSlotsPayload(false, new ArrayList<>()));
+
+        // TODO: Spinning up a thread just to populate this list might be overly memory-intensive
+        Thread structureListWaiter = new Thread(this::receiveStructures);
+        structureListWaiter.start();
+    }
+
     public void receiveStructures() {
         try {
             while (NomadsCampsClient.instance.getSlots() == null)

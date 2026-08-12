@@ -98,22 +98,18 @@ public class NomadsCamps implements ModInitializer {
                     Path structureDirectory = context.player().server
                             .getSavePath(WorldSavePath.GENERATED)
                             .resolve(MOD_ID)
-                            //TODO reimplement each player having their own structure directory
-                            //.resolve(context.player().getNameForScoreboard().toLowerCase())
-                            .resolve("structures");
+                            .resolve(context.player().getNameForScoreboard().toLowerCase());
 
-                    if(payload.changed())
-                    {
+                    if(payload.changed()) {
                         // Write the received slot list into the files
                         writeStructureSlotsToFile(structureDirectory, payload.slots());
+                    } else {
+                        ServerPlayNetworking.send(
+                                context.player(),
+                                new ReturnSlotsPayload(
+                                        getStructureSlotsFromFile(structureDirectory)
+                                ));
                     }
-
-                    // Even if you just got a structure list, rebuild it from the files just to be safe
-                    ServerPlayNetworking.send(
-                            context.player(),
-                            new ReturnSlotsPayload(
-                                    getStructureSlotsFromFile(structureDirectory)
-                            ));
         });
         // endregion NETWORKING
 	}
@@ -168,8 +164,7 @@ public class NomadsCamps implements ModInitializer {
         }
     }
 
-    private CampBlockEntity getCampBlockAtPos(BlockPos pos, ServerPlayerEntity sender)
-    {
+    private CampBlockEntity getCampBlockAtPos(BlockPos pos, ServerPlayerEntity sender) {
         BlockEntity maybeSupplies = sender.getWorld().getBlockEntity(pos);
 
         if(maybeSupplies instanceof CampBlockEntity supplies) {

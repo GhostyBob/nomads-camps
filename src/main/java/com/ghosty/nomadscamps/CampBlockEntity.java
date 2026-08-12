@@ -29,16 +29,9 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class CampBlockEntity extends BlockEntity {
-
-    // region FIELDS
-    private BlockPos pos;
-
-    // endregion FIELDS
-
     //Constructor
     public CampBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
-        this.pos = pos;
         //structureSlots = new ArrayList<>(numStructureSlots);
     }
 
@@ -157,8 +150,6 @@ public class CampBlockEntity extends BlockEntity {
             List<Path> filenames = NomadsCamps.getStructureFileNames(caller.server
                     .getSavePath(WorldSavePath.GENERATED)
                     .resolve(NomadsCamps.MOD_ID)
-                    //TODO reimplement each player having their own structure directory
-                    //.resolve(caller.getNameForScoreboard().toLowerCase())
                     .resolve("structures"));
             boolean checkingDuplicates;
 
@@ -318,9 +309,7 @@ public class CampBlockEntity extends BlockEntity {
         Path structureDirectory = player.server
                 .getSavePath(WorldSavePath.GENERATED)
                 .resolve(NomadsCamps.MOD_ID)
-                //TODO reimplement each player having their own structure directory
-                //.resolve(player.getNameForScoreboard().toLowerCase())
-                .resolve("structures");
+                .resolve(player.getNameForScoreboard().toLowerCase());
 
         ServerPlayNetworking.send(player, new ReturnSlotsPayload(NomadsCamps.getStructureSlotsFromFile(structureDirectory)));
     }

@@ -2,6 +2,7 @@ package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.ReturnSlotsPayload;
 import com.ghosty.nomadscamps.networking.ShowGUIPayload;
+import com.ghosty.nomadscamps.networking.UpdateSlotsPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
@@ -44,6 +45,8 @@ public class NomadsCampsClient implements ClientModInitializer {
                     if(newSlot.isDirty())
                         this.slots.set(newSlot.getIndex(), newSlot);
                 }
+                // Once the changes have been incorporated, return the new list of slots to be saved to file.
+                ClientPlayNetworking.send(new UpdateSlotsPayload(true, slots));
             }
         });
         // endregion NETWORKING
