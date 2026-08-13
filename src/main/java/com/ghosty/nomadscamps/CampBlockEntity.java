@@ -102,7 +102,7 @@ public class CampBlockEntity extends BlockEntity {
                     ppa.getMinX(), ppa.getMinY(), ppa.getMinZ(),
                     ppa.getMaxX(), ppa.getMaxY(), ppa.getMaxZ())) {
                 if (!world.getBlockState(pos).isAir()) {
-                    System.out.println("The proposed area has blocks in it!");
+                    caller.sendMessage(Text.of("The proposed area is obstructed! No structure was placed."), true);
                     return false;
                 }
             }
