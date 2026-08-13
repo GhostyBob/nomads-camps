@@ -28,7 +28,7 @@ public class NomadsCampsClient implements ClientModInitializer {
 
         // region NETWORKING
         ClientPlayNetworking.registerGlobalReceiver(ShowGUIPayload.ID, (payload, context) -> {
-            CampSuppliesGUI gui = new CampSuppliesGUI(payload.showClaimScreen() ? "claim" : "structureList");
+            CampSuppliesGUI gui = new CampSuppliesGUI(payload.showClaimScreen() ? "claim" : "structureList", payload.suppliesPos());
 
             MinecraftClient.getInstance().setScreen(gui);
         });

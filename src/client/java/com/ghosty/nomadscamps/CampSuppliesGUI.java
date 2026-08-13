@@ -7,18 +7,15 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
 import net.minecraft.client.gui.Selectable;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.ElementListWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.gui.widget.TextWidget;
+import net.minecraft.client.gui.widget.*;
+import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.*;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.math.MathHelper;
 import org.apache.commons.lang3.NotImplementedException;
 import org.jetbrains.annotations.Nullable;
 
-import java.awt.*;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +30,8 @@ public class CampSuppliesGUI extends Screen {
     public String address;
     /// A field to keep track of the structure slot currently being edited
     private int currentSlotIndex = -1;
+    /// The location of the camp supplies that opened this screen, for structure placement offset purposes.
+    private BlockPos pos;
     // Some constants used for the look of the menu.
     private static final Identifier BACKGROUND_TEXTURE = Identifier.ofVanilla("textures/gui/demo_background.png");
     private final int backgroundWidth = 248;
@@ -47,14 +46,16 @@ public class CampSuppliesGUI extends Screen {
     // endregion FIELDS
 
     // region CONSTRUCTORS
-    public CampSuppliesGUI(String title) {
+    public CampSuppliesGUI(String title, BlockPos suppliesPos) {
         super(Text.of(title));
         address = title;
+        pos = suppliesPos;
     }
-    public CampSuppliesGUI(String title, Screen prev) {
+    public CampSuppliesGUI(String title, Screen prev, BlockPos suppliesPos) {
         super(Text.of(title));
         address = title;
         prevScreen = prev;
+        pos = suppliesPos;
     }
     // endregion CONSTRUCTORS
 
@@ -70,8 +71,8 @@ public class CampSuppliesGUI extends Screen {
             case "claim":
                 openClaimScreen();
                 break;
-            case "structurePlacerTemp":
-                openStructurePlacerTEMP();
+            case "structurePlacer":
+                openStructurePlacer();
                 break;
             case "slotEditor":
                 openSlotEditor();
@@ -112,7 +113,7 @@ public class CampSuppliesGUI extends Screen {
     }
 
     private void openStructureList() {
-        ButtonWidget closeButton = ButtonWidget.builder(Text.of("Close"), (btn) -> {
+        ButtonWidget closeButton = ButtonWidget.builder(ScreenTexts.BACK, (btn) -> {
             this.close();
         }).dimensions(
                 (width / 2) + (backgroundWidth / 2) - 65,
@@ -137,42 +138,46 @@ public class CampSuppliesGUI extends Screen {
         }
     }
 
-    private void openStructurePlacerTEMP() {
+    private void openStructurePlacer() {
 
-        // region COORDINATE FIELDS
-        TextFieldWidget xField = new TextFieldWidget(textRenderer,
-                (super.width / 2) - 70,
-                (super.height / 2) - (backgroundHeight / 4) + 20,
-                40,
+        OffsetSliderWidget xOffsetSlider = new OffsetSliderWidget(
+                width / 2 - backgroundWidth / 2 + 20,
+                height / 2 - backgroundHeight / 4 - 30,
+                backgroundWidth - 40,
                 20,
-                Text.of("X")
+                "X",
+                0.5F
         );
-        this.addDrawableChild(xField);
-        TextFieldWidget yField = new TextFieldWidget(textRenderer,
-                (super.width / 2) - 20,
-                (super.height / 2) - (backgroundHeight / 4) + 20,
-                40,
+        addDrawableChild(xOffsetSlider);
+
+        OffsetSliderWidget yOffsetSlider = new OffsetSliderWidget(
+                width / 2  - backgroundWidth / 2 + 20,
+                height / 2 - backgroundHeight / 4,
+                backgroundWidth - 40,
                 20,
-                Text.of("Y")
+                "Y",
+                0.5F
         );
-        this.addDrawableChild(yField);
-        TextFieldWidget zField = new TextFieldWidget(textRenderer,
-                (super.width / 2) + 30,
-                (super.height / 2) - (backgroundHeight / 4) + 20,
-                40,
+        addDrawableChild(yOffsetSlider);
+
+        OffsetSliderWidget zOffsetSlider = new OffsetSliderWidget(
+                width / 2 - backgroundWidth / 2 + 20,
+                height / 2 - backgroundHeight / 4 + 30,
+                backgroundWidth - 40,
                 20,
-                Text.of("Z")
+                "Z",
+                0.5F
         );
-        this.addDrawableChild(zField);
-        // endregion COORDINATE FIELDS
+        addDrawableChild(zOffsetSlider);
 
         ButtonWidget placeButton = ButtonWidget.builder(Text.of("place"), (btn) -> {
+                    StructureSlot slot = NomadsCampsClient.instance.getSlots().get(currentSlotIndex);
                     sendBuildPacket(
-                            NomadsCampsClient.instance.getSlots().get(currentSlotIndex),
-                            new BlockPos(new Vec3i(
-                                    Integer.parseInt(xField.getText()),
-                                    Integer.parseInt(yField.getText()),
-                                    Integer.parseInt(zField.getText()))
+                            slot,
+                            new BlockPos(
+                                    pos.getX() + (xOffsetSlider.offset),
+                                    pos.getY() + (yOffsetSlider.offset),
+                                    pos.getZ() + (zOffsetSlider.offset)
                             )
                     );
                     forceClose();
@@ -252,7 +257,7 @@ public class CampSuppliesGUI extends Screen {
 
         // region SAVE / CLOSE BUTTONS
         ButtonWidget saveButton = ButtonWidget.builder(
-                Text.of("Save and Close"),
+                ScreenTexts.DONE,
                 (btn) -> {
                     NomadsCampsClient.instance.getSlots().get(currentSlotIndex).structureName = nameField.getText();
                     close();
@@ -266,7 +271,7 @@ public class CampSuppliesGUI extends Screen {
         this.addDrawableChild(saveButton);
 
         ButtonWidget closeButton = ButtonWidget.builder(
-                        Text.of("Close Without Saving"),
+                        ScreenTexts.CANCEL,
                         (btn) -> {
                             close();
                         }
@@ -284,12 +289,12 @@ public class CampSuppliesGUI extends Screen {
     // region HELPER METHODS
     protected CampSuppliesGUI switchScreen(String title, @Nullable Screen parent, @Nullable Integer index) {
         if(parent == null) {
-            CampSuppliesGUI output = new CampSuppliesGUI(title);
+            CampSuppliesGUI output = new CampSuppliesGUI(title, pos);
             if (index != null) output.currentSlotIndex = index;
             this.client.setScreen(output);
             return output;
         } else {
-            CampSuppliesGUI output = new CampSuppliesGUI(title, parent);
+            CampSuppliesGUI output = new CampSuppliesGUI(title, parent, pos);
             if (index != null) output.currentSlotIndex = index;
             this.client.setScreen(output);
             return output;
@@ -351,7 +356,7 @@ public class CampSuppliesGUI extends Screen {
     // endregion NETWORKING
 
     // Inner class to display the structure list
-    class structureListWidget extends ElementListWidget<structureListWidget.structureEntry> {
+    private class structureListWidget extends ElementListWidget<structureListWidget.structureEntry> {
         private final CampSuppliesGUI parentGui;
 
         // Constructor
@@ -419,7 +424,7 @@ public class CampSuppliesGUI extends Screen {
 
                 if(!structureSlot.isPlaced()) {
                     nameButton = ButtonWidget.builder(Text.of(name), (btn) -> {
-                        parentGui.switchScreen("structurePlacerTemp", parentGui, slot.getIndex());
+                        parentGui.switchScreen("structurePlacer", parentGui, slot.getIndex());
                     }).dimensions(0, 0, width - 40 - ELEMENT_PADDING, height).build();;
                     children.add(nameButton);
                 } else {
@@ -470,6 +475,32 @@ public class CampSuppliesGUI extends Screen {
                 return super.mouseClicked(mouseX, mouseY, button);
             }
             // endregion METHODS
+        }
+    }
+
+    // Inner class to represent placement offset sliders
+    private class OffsetSliderWidget extends SliderWidget {
+        private final int maxOffset = 16;
+        public int offset = 0;
+        private Text label;
+
+        public OffsetSliderWidget(int x, int y, int width, int height, String dimension, double value) {
+            super(x, y, width, height, ScreenTexts.EMPTY, value);
+            label = Text.of(dimension + " Offset");
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            this.setMessage(ScreenTexts.composeGenericOptionText(
+                    label,
+                    Text.of(String.valueOf(offset))
+            ));
+        }
+
+        @Override
+        protected void applyValue() {
+            offset = (int) MathHelper.lerp(MathHelper.clamp(this.value, 0.0F, 1.0F), -maxOffset, maxOffset);
         }
     }
 }
