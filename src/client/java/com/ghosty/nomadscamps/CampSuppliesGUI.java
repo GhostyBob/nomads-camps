@@ -31,7 +31,7 @@ public class CampSuppliesGUI extends Screen {
     /// A field to keep track of the structure slot currently being edited
     private int currentSlotIndex = -1;
     /// The location of the camp supplies that opened this screen, for structure placement offset purposes.
-    private BlockPos pos;
+    private final BlockPos pos;
     // Some constants used for the look of the menu.
     private static final Identifier BACKGROUND_TEXTURE = Identifier.ofVanilla("textures/gui/demo_background.png");
     private final int backgroundWidth = 248;
@@ -199,7 +199,7 @@ public class CampSuppliesGUI extends Screen {
         TextFieldWidget nameField = new TextFieldWidget(
                 textRenderer,
                 width / 2 - 100,
-                height / 2 - backgroundHeight / 2 + 10,
+                height / 2 - (3 * (backgroundHeight / 8)),
                 200,
                 20,
                 Text.of("Structure Name")
@@ -209,18 +209,18 @@ public class CampSuppliesGUI extends Screen {
         // endregion NAME FIELD
 
         // region SLOT DESCRIPTION
-        StringBuilder slotDescBuilder = new StringBuilder("This structure has size ");
+        StringBuilder slotDescBuilder = new StringBuilder("This slot encompasses a ");
         slotDescBuilder.append(currentSlot.sizeX());
         slotDescBuilder.append("x");
         slotDescBuilder.append(currentSlot.sizeY());
         slotDescBuilder.append("x");
         slotDescBuilder.append(currentSlot.sizeZ());
-        slotDescBuilder.append(" blocks.");
+        slotDescBuilder.append(" block space.");
         Text slotSize = Text.of(slotDescBuilder.toString());
 
         TextWidget slotSizeDescription = new TextWidget(
                 width / 2 - backgroundWidth / 2,
-                height / 2 - backgroundHeight / 2 + 40,
+                height / 2 - (2 * textRenderer.fontHeight),
                 backgroundWidth,
                 textRenderer.fontHeight,
                 slotSize,
@@ -247,7 +247,7 @@ public class CampSuppliesGUI extends Screen {
 
         TextWidget slotPosDescription = new TextWidget(
                 width / 2 - backgroundWidth / 2,
-                height / 2 - backgroundHeight / 2 + 42 + textRenderer.fontHeight,
+                height / 2 + textRenderer.fontHeight,
                 backgroundWidth,
                 textRenderer.fontHeight,
                 slotPosition,
