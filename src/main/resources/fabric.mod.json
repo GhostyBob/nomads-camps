@@ -3,13 +3,13 @@
 	"id": "nomads-camps",
 	"version": "${version}",
 	"name": "Nomad's Camps",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Easily pack structures into an item so you can take your base with you as you explore.",
 	"authors": [
-		"Me!"
+		"GhostyBob"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/GhostyBob/nomads-camps",
+		"sources": "https://github.com/GhostyBob/nomads-camps"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/nomads-camps/icon.png",
@@ -26,19 +26,16 @@
 		]
 	},
 	"mixins": [
-		"nomads-camps.mixins.json",
-		{
-			"config": "nomads-camps.client.mixins.json",
-			"environment": "client"
-		}
+		"nomads-camps.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.17.2",
 		"minecraft": "~1.21.1",
 		"java": ">=21",
-		"fabric-api": "*"
+		"fabric-api": "*",
+        "owo-lib": "0.12.15.4+1.21"
 	},
 	"suggests": {
-		"another-mod": "*"
+
 	}
 }

@@ -292,7 +292,6 @@ public class CampSuppliesGUI extends Screen {
     private void queryStructures() {
         ClientPlayNetworking.send(new UpdateSlotsPayload(false, new ArrayList<>()));
 
-        // TODO: Spinning up a thread just to populate this list might be overly memory-intensive
         Thread structureListWaiter = new Thread(this::receiveStructures);
         structureListWaiter.start();
     }
@@ -316,10 +315,6 @@ public class CampSuppliesGUI extends Screen {
                 this
         );
         this.addDrawableChild(structureList);
-    }
-
-    private void sendOwnershipPacket() {
-        ClientPlayNetworking.send(new SetOwnerPayload());
     }
 
     private void sendBuildPacket(StructureSlot slot, BlockPos origin) {

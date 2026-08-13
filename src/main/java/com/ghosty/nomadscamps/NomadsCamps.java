@@ -1,6 +1,7 @@
 package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.*;
+import com.ghosty.nomadscamps.util.NomadsCampsConfig;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import net.fabricmc.api.ModInitializer;
@@ -28,14 +29,14 @@ import java.util.stream.Stream;
 public class NomadsCamps implements ModInitializer {
 
     // region FIELDS
-    // TODO fill out fabric.mod.json and README.md
+    // TODO fill out README.md once you have a Modrinth page set up
     public static final String MOD_ID = "nomads-camps";
     public static final Identifier DEFAULT_STRUCTURE_FILENAME = Identifier.of(MOD_ID + ":emptyplot");
+    public static final NomadsCampsConfig CONFIG = NomadsCampsConfig.createAndLoad();
 
 	// This logger is used to write text to the console and the log file.
 	// It is considered best practice to use your mod id as the logger's name.
 	// That way, it's clear which mod wrote info, warnings, and errors.
-    // TODO replace sysout printlns with logger writes
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
     // endregion FIELDS
@@ -51,7 +52,6 @@ public class NomadsCamps implements ModInitializer {
 
         // region NETWORKING
         PayloadTypeRegistry.playC2S().register(StructureActionPayload.ID, StructureActionPayload.CODEC);
-        PayloadTypeRegistry.playC2S().register(SetOwnerPayload.ID, SetOwnerPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(UpdateSlotsPayload.ID, UpdateSlotsPayload.CODEC);
 
         PayloadTypeRegistry.playS2C().register(ShowGUIPayload.ID, ShowGUIPayload.CODEC);
@@ -82,15 +82,6 @@ public class NomadsCamps implements ModInitializer {
                         default:
                             break;
                     }
-        });
-
-        ServerPlayNetworking.registerGlobalReceiver(SetOwnerPayload.ID,
-                (payload, context) -> {
-//                    ServerPlayerEntity sender = context.player();
-//                    CampBlockEntity supplies = getCampBlockAtPos(payload.suppliesPos(), sender);
-//
-//                    if(supplies.setOwner(sender))
-//                         System.out.println("Owner set!");
         });
 
         ServerPlayNetworking.registerGlobalReceiver(UpdateSlotsPayload.ID,
@@ -163,14 +154,12 @@ public class NomadsCamps implements ModInitializer {
             return null;
         }
     }
-    
+
     private static ArrayList<StructureSlot> getDefaultStructureSlots() {
-        // TODO have this pull from a .config
-        ArrayList<StructureSlot> output = new ArrayList<>(4);
-        output.add(new StructureSlot(0));
-        output.add(new StructureSlot(1));
-        output.add(new StructureSlot(2));
-        output.add(new StructureSlot(3));
+        ArrayList<StructureSlot> output = new ArrayList<>(CONFIG.startingSlotCount());
+
+        for(int i = 0; i < CONFIG.startingSlotCount(); i++)
+            output.add(new StructureSlot(i));
 
         return output;
     }

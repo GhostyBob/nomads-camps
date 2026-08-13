@@ -12,9 +12,6 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class StructureSlot {
-    // TODO make these pull from the .config file
-    // TODO also set up a .config file
-
     // region FIELDS
     public String structureName;
     public Identifier structureFileName;
@@ -27,7 +24,6 @@ public class StructureSlot {
     private final int sizeZ;
     private boolean isPlaced;
     private final boolean captureEntities;
-    // private List ignoredBlocks;
 
     private boolean dirty = false;
     // endregion FIELDS
@@ -70,15 +66,15 @@ public class StructureSlot {
         occupiedArea = null;
         isPlaced = false;
 
-        sizeX = 4;
-        sizeY = 4;
-        sizeZ = 4;
+        sizeX = NomadsCamps.CONFIG.startingSlotSizeX();
+        sizeY = NomadsCamps.CONFIG.startingSlotSizeY();
+        sizeZ = NomadsCamps.CONFIG.startingSlotSizeZ();
 
         structureName = "Empty Slot";
         structureFileName = NomadsCamps.DEFAULT_STRUCTURE_FILENAME;
         this.index = index;
 
-        captureEntities = false;
+        captureEntities = NomadsCamps.CONFIG.slotsCaptureEntities();
     }
 
     // This constructor should only be used by the codec defined above

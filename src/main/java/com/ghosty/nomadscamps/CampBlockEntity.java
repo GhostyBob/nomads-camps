@@ -47,10 +47,10 @@ public class CampBlockEntity extends BlockEntity {
         if(player instanceof ServerPlayerEntity serverPlayer) {
             if(ownedBy(player)) {
                 //Send a packet to the client to open the camp supplies GUI
-                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(false, pos));
+                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(pos));
             } else if(uuid == null) {
                 setOwner(player);
-                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(false, pos));
+                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(pos));
             } else {
                 serverPlayer.sendMessage(Text.of("These supplies are owned by " + getOwnerName()), true);
             }
@@ -75,8 +75,7 @@ public class CampBlockEntity extends BlockEntity {
         try {
             return ownerName;
         } catch(NullPointerException e) {
-            return "Mr. Error.";
-            //return "an offline player";
+            return "null";
         }
     }
 
@@ -88,7 +87,7 @@ public class CampBlockEntity extends BlockEntity {
 
         if(!slot.structureFileName.equals(NomadsCamps.DEFAULT_STRUCTURE_FILENAME)) {
             if (slot.isPlaced()) {
-                System.out.println(slot.structureName + " is already placed!");
+                NomadsCamps.LOGGER.debug("Tried to place {}, but it was already placed!", slot.structureName);
                 return false;
             }
 
@@ -173,7 +172,7 @@ public class CampBlockEntity extends BlockEntity {
                     }
                 }
             } while (checkingDuplicates);
-            System.out.println("Found valid identifier: " + proposedFilename.toString());
+            NomadsCamps.LOGGER.debug("Created a new structure file with identifier {}", proposedFilename);
             // endregion FILENAME FINDING
             // At this point, we know proposedFilename is a valid Identifier and isn't a duplicate.
             slot.structureFileName = proposedFilename;
@@ -185,19 +184,19 @@ public class CampBlockEntity extends BlockEntity {
         if (result)
         {
             slot.place(origin);
-            System.out.println("Successfully placed " + slot.structureName);
+            NomadsCamps.LOGGER.debug("Successfully placed {}.", slot.structureName);
             returnUpdatedSlot(caller, slot);
 
             return true;
         }
 
-        System.out.println("Failed to place " + slot.structureName);
+        NomadsCamps.LOGGER.debug("Failed to place {}.", slot.structureName);
         return false;
     }
 
     public static boolean removeStructure(ServerPlayerEntity caller, StructureSlot slot) {
         if (!slot.isPlaced()) {
-            System.out.println(slot.structureName + " is not yet placed!");
+            NomadsCamps.LOGGER.debug("Tried to remove {}, but it is not yet placed!", slot.structureName);
             return false;
         }
 
@@ -236,7 +235,7 @@ public class CampBlockEntity extends BlockEntity {
         structureTemplate.setAuthor(authorUuid);
         //Save the template
         try {
-            System.out.println("Successfully saved " + slot.structureFileName);
+            NomadsCamps.LOGGER.debug("Successfully saved {}.", slot.structureFileName);
             return templateManager.saveTemplate(slot.structureFileName);
         } catch (InvalidIdentifierException e) {
             return false;
@@ -290,7 +289,7 @@ public class CampBlockEntity extends BlockEntity {
             }
         } catch (InterruptedException e) {
             // Fall back to the boring method if something goes south.
-            System.out.println("Interrupted :(");
+            NomadsCamps.LOGGER.debug("The structure removal process was interrupted.");
             fillArea(world, area, state);
         }
         // Mark changed chunks dirty?
