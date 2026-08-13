@@ -170,7 +170,7 @@ public class CampSuppliesGUI extends Screen {
         );
         addDrawableChild(zOffsetSlider);
 
-        ButtonWidget placeButton = ButtonWidget.builder(Text.of("place"), (btn) -> {
+        ButtonWidget placeButton = ButtonWidget.builder(Text.of("Place"), (btn) -> {
                     StructureSlot slot = NomadsCampsClient.instance.getSlots().get(currentSlotIndex);
                     sendBuildPacket(
                             slot,
