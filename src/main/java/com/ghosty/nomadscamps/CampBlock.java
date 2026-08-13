@@ -22,7 +22,7 @@ import org.jetbrains.annotations.Nullable;
 
 public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
     private static final VoxelShape SHAPE =
-            CampBlock.createCuboidShape(2, 0, 2, 14, 13, 14);
+            CampBlock.createCuboidShape(2, 0, 4, 14, 13, 12);
 
     public static final MapCodec<CampBlock> CODEC = CampBlock.createCodec(CampBlock::new);
 

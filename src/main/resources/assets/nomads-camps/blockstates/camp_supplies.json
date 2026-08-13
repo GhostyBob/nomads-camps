@@ -1,5 +1,5 @@
 {
   "variants": {
-    "": {"model":  "nomads-camps:block/camp_supplies"}
+    "": {"model":  "nomads-camps:block/camp_supplies_placeholder2"}
   }
 }
