@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "###",
+    "LCL",
+    "~L~"
+  ],
+  "key": {
+    "#": {
+      "tag": "minecraft:wool"
+    },
+    "L": {
+      "item": "minecraft:leather"
+    },
+    "C": {
+      "item": "minecraft:chest"
+    },
+    "~": {
+      "item": "minecraft:string"
+    }
+  },
+  "result": {
+    "id": "nomads-camps:camp_supplies"
+  }
+}
