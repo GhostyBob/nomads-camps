@@ -163,18 +163,7 @@ public class NomadsCamps implements ModInitializer {
             return null;
         }
     }
-
-    private CampBlockEntity getCampBlockAtPos(BlockPos pos, ServerPlayerEntity sender) {
-        BlockEntity maybeSupplies = sender.getWorld().getBlockEntity(pos);
-
-        if(maybeSupplies instanceof CampBlockEntity supplies) {
-            return supplies;
-        } else {
-            //TODO add dimension/world checking. Might already be handled by sender.getWorld()
-            throw(new NullPointerException("Given location does not contain camp supplies!"));
-        }
-    }
-
+    
     private static ArrayList<StructureSlot> getDefaultStructureSlots() {
         // TODO have this pull from a .config
         ArrayList<StructureSlot> output = new ArrayList<>(4);

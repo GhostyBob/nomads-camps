@@ -49,7 +49,6 @@ public class CampBlockEntity extends BlockEntity {
                 //Send a packet to the client to open the camp supplies GUI
                 ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(false, pos));
             } else if(uuid == null) {
-                //TODO re-decide if the player should be able to claim supplies via a pop-up menu
                 setOwner(player);
                 ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(false, pos));
             } else {

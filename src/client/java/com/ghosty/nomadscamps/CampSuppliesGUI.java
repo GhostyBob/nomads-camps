@@ -68,9 +68,6 @@ public class CampSuppliesGUI extends Screen {
             case "structureList":
                 openStructureList();
                 break;
-            case "claim":
-                openClaimScreen();
-                break;
             case "structurePlacer":
                 openStructurePlacer();
                 break;
@@ -95,23 +92,6 @@ public class CampSuppliesGUI extends Screen {
     // endregion PUBLIC METHODS
 
     // region PAGE LAYOUTS
-    private void openClaimScreen() {
-        //TODO make this screen prettier
-        ButtonWidget claimOwnershipButton = ButtonWidget.builder(Text.of("Claim Ownership"), (btn) -> {
-
-            sendOwnershipPacket();
-            forceClose();
-
-        }).dimensions(
-                (super.width / 2) - 60,
-                (super.height / 3) - 10,
-                120,
-                20
-        ).build();
-
-        this.addDrawableChild(claimOwnershipButton);
-    }
-
     private void openStructureList() {
         ButtonWidget closeButton = ButtonWidget.builder(ScreenTexts.BACK, (btn) -> {
             this.close();
