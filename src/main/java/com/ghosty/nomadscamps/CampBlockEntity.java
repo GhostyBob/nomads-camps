@@ -1,3 +1,6 @@
+/// @Author GhostyBob
+/// @Version 8/14/26
+
 package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.util.TaggedStructureTemplate;
@@ -28,37 +31,56 @@ import net.minecraft.util.math.Vec3i;
 import java.nio.file.Path;
 import java.util.*;
 
+/// Defines behavior for the Camp Supplies block entity.
 public class CampBlockEntity extends BlockEntity {
-    //Constructor
+    /// Trivial constructor; constructs a CampBlockEntity with the
+    /// given state at the given position using the default
+    /// BlockEntity constructor.
     public CampBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
-        //structureSlots = new ArrayList<>(numStructureSlots);
     }
 
     // region OWNERSHIP
-
-    //private final UUID DEFAULTUUID = UUID.fromString("ab63890e-685f-4ccd-b319-1b62d2d39444");
+    /// The uuid for this block entity. Null if these supplies have no
+    /// owner. Set to the owner's player uuid if these supplies are owned.
     private UUID uuid = null;
+    /// A human-readable representation of these supplies' owner. Null
+    /// if there is no owner.
     private String ownerName = null;
 
-
+    /// Displays the camp supplies GUI to the passed player if these
+    /// supplies are unowned or the passed player is the owner. Will
+    /// just display a message listing the owner name if the passed
+    /// player is not the owner.
+    ///
+    /// @param player The player to possibly show the GUI to.
     public void showGUI(PlayerEntity player) {
-        //Get the relevant ServerPlayerEntity from the passed PlayerEntity
-        if(player instanceof ServerPlayerEntity serverPlayer) {
-            if(ownedBy(player)) {
-                //Send a packet to the client to open the camp supplies GUI
+        // Get the relevant ServerPlayerEntity from the passed PlayerEntity.
+        if (player instanceof ServerPlayerEntity serverPlayer) {
+            if (ownedBy(player)) {
+                // Send a packet to the client to open the camp supplies GUI.
                 ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(pos));
-            } else if(uuid == null) {
-                setOwner(player);
-                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(pos));
-            } else {
-                serverPlayer.sendMessage(Text.of("These supplies are owned by " + getOwnerName()), true);
+                return;
             }
+            // Set these supplies' owner to the passed player, then show
+            // them the GUI.
+            if (uuid == null && setOwner(player)) {
+                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(pos));
+                return;
+            }
+
+            // Display a message to the passed player that these supplies are
+            // owned by someone else.
+            serverPlayer.sendMessage(Text.of("These supplies are owned by " + getOwnerName()), true);
         }
     }
 
+    /// If these supplies are unowned, set their owner as the passed player.
+    ///
+    /// @param player The player to try and set as the new owner.
+    /// @return True if the owner was updated to player; false otherwise.
     public boolean setOwner(PlayerEntity player) {
-        if(uuid == null) {
+        if (uuid == null) {
             uuid = player.getUuid();
             ownerName = player.getNameForScoreboard();
             return true;
@@ -66,26 +88,48 @@ public class CampBlockEntity extends BlockEntity {
         return false;
     }
 
+    /// Checks if these supplies are owned by the passed player. Compares the
+    /// uuid stored in these supplies to the passed player's uuid using uuid.equals().
+    ///
+    /// @param player The player being compared to these supplies' owner.
+    /// @return False if these supplies have no owner or the owner's uuid
+    /// doesn't equal that of the passed player.
     public boolean ownedBy(PlayerEntity player) {
-        if(uuid == null) return false;
+        if (uuid == null) return false;
         return uuid.equals(player.getUuid());
     }
 
+    /// @return The contents of the ownerName field, or the string "null" if
+    /// it is empty.
     public String getOwnerName() {
         try {
             return ownerName;
-        } catch(NullPointerException e) {
+        } catch (NullPointerException e) {
             return "null";
         }
     }
-
     // endregion OWNERSHIP
 
     // region STRUCTURES
+
+    /// Handles the placement of structure slots using the same general process as
+    /// the base game's structure blocks.
+    ///
+    /// @param caller The ServerPlayerEntity that requested this structure be placed.
+    ///                             Used to place the structure in the correct world, find the right directory
+    ///                             for structure files, and is the recipient of a message if the structure
+    ///                             can't be placed.
+    /// @param slot   The StructureSlot to pull the structure filename and other data from.
+    ///                             Mutated by this method and sent back to caller to be saved.
+    /// @param origin The position to anchor the placed structure to. Anchors the
+    ///                             structure using the (-x, -y, -z) corner.
+    /// @return True if the structure was placed successfully; false otherwise.
+    /// @see net.minecraft.block.entity.StructureBlockBlockEntity
     public static boolean placeStructure(ServerPlayerEntity caller, StructureSlot slot, BlockPos origin) {
         boolean result;
 
-        if(!slot.structureFileName.equals(NomadsCamps.DEFAULT_STRUCTURE_FILENAME)) {
+        if (!slot.structureFileName.equals(NomadsCamps.DEFAULT_STRUCTURE_FILENAME)) {
+            // If the slot's filename isn't the default, find and place the existing structure.
             if (slot.isPlaced()) {
                 NomadsCamps.LOGGER.debug("Tried to place {}, but it was already placed!", slot.structureName);
                 return false;
@@ -93,12 +137,13 @@ public class CampBlockEntity extends BlockEntity {
 
             ServerWorld world = caller.getServerWorld();
 
-            // Check if proposed placement overlaps anything
+            // Check if the proposed placement overlaps anything
             // ppa is short for proposedPlacementArea
             BlockBox ppa = slot.getProposedArea(origin);
             for (BlockPos pos : BlockPos.iterate(
                     ppa.getMinX(), ppa.getMinY(), ppa.getMinZ(),
                     ppa.getMaxX(), ppa.getMaxY(), ppa.getMaxZ())) {
+                // TODO Make this check more permissive by checking against a TagKey.
                 if (!world.getBlockState(pos).isAir()) {
                     caller.sendMessage(Text.of("The proposed area is obstructed! No structure was placed."), true);
                     return false;
@@ -114,8 +159,8 @@ public class CampBlockEntity extends BlockEntity {
                 return false;
             }
 
-            // place the template
-            StructurePlacementData structurePlacementData = (new StructurePlacementData())/*.setMirror(this.mirror).setRotation(this.rotation).setIgnoreEntities(this.ignoreEntities)*/;
+            // Place the template
+            StructurePlacementData structurePlacementData = (new StructurePlacementData());
 
             result = template.place(
                     world,
@@ -135,54 +180,54 @@ public class CampBlockEntity extends BlockEntity {
                 // Logic for manually building a valid file name
                 StringBuilder builder = new StringBuilder();
                 int index, prevIndex = 0;
-                for(index = 0; index < name.length(); index++)
-                    if(!Identifier.isCharValid(name.charAt(index))) {
-                        if(index - prevIndex > 0)
+                for (index = 0; index < name.length(); index++)
+                    if (!Identifier.isCharValid(name.charAt(index))) {
+                        if (index - prevIndex > 0)
                             builder.append(name, prevIndex, index);
                         prevIndex = index + 1;
                     }
                 proposedFilename = Identifier.of(NomadsCamps.MOD_ID, builder.toString());
             }
 
+            // Don't allow actual structure files to have the default filename
+            if (proposedFilename.equals(NomadsCamps.DEFAULT_STRUCTURE_FILENAME))
+                proposedFilename = Identifier.of(adjustFilename(proposedFilename));
+
             // Check other filenames for duplicates
             List<Path> filenames = NomadsCamps.getStructureFileNames(caller.server
                     .getSavePath(WorldSavePath.GENERATED)
                     .resolve(NomadsCamps.MOD_ID)
                     .resolve("structures"));
-            boolean checkingDuplicates;
 
+            boolean checkingDuplicates;
             do {
                 checkingDuplicates = false;
                 for (Path p : filenames) {
+                    // Shorten p to only include the file name itself.
                     String pName = p.subpath(p.getNameCount() - 1, p.getNameCount()).toString();
+                    // Cut off the file extension, then compare it to the proposed filename.
                     if (pName.substring(0, (pName.length() - 4)).equals(proposedFilename.getPath())) {
-                        //We have a duplicate: append a number and start over
+                        // Filename is a duplicate: Adjust the name and start over
                         checkingDuplicates = true;
-                        String proposedPath = proposedFilename.getPath();
-                        char lastChar = proposedPath.charAt(proposedPath.length() - 1);
-                        if (lastChar >= '0' && lastChar < '9') {
-                            proposedPath = proposedPath.substring(0, proposedPath.length() - 1) + (++lastChar);
-                        } else if (lastChar == '9') {
-                            proposedPath = proposedPath.substring(0, proposedPath.length() - 2) + (proposedPath.charAt(proposedPath.length() - 2) + 1);
-                        } else {
-                            proposedPath += "00";
-                        }
-                        proposedFilename = Identifier.of(NomadsCamps.MOD_ID, proposedPath);
+                        proposedFilename = Identifier.of(NomadsCamps.MOD_ID, adjustFilename(proposedFilename));
                         break;
                     }
                 }
             } while (checkingDuplicates);
             NomadsCamps.LOGGER.debug("Created a new structure file with identifier {}", proposedFilename);
             // endregion FILENAME FINDING
-            // At this point, we know proposedFilename is a valid Identifier and isn't a duplicate.
+
+            // At this point, proposedFilename is a valid Identifier and isn't a duplicate.
+            // Make a new template with the proposed file name.
             slot.structureFileName = proposedFilename;
             StructureTemplateManager templateManager = caller.getServerWorld().getStructureTemplateManager();
             templateManager.getTemplateOrBlank(proposedFilename);
             result = templateManager.saveTemplate(proposedFilename);
         }
 
-        if (result)
-        {
+        // If no problems have happened yet, mark the slot as placed and send it
+        // to the client to be updated.
+        if (result) {
             slot.place(origin);
             NomadsCamps.LOGGER.debug("Successfully placed {}.", slot.structureName);
             returnUpdatedSlot(caller, slot);
@@ -194,27 +239,74 @@ public class CampBlockEntity extends BlockEntity {
         return false;
     }
 
+    /// Helper method for adjusting structure filenames to avoid duplicates. Appends a number
+    /// to the end of the file name, or increments it if there is already a number.
+    ///
+    /// @param workingName The filename that needs to be adjusted.
+    /// @return A string representation of the adjusted filename.
+    private static String adjustFilename(Identifier workingName) {
+        StringBuilder newNameBuilder = new StringBuilder(workingName.getPath());
+        StringBuilder newNameSuffixBuilder = new StringBuilder();
+
+        // Starting at the end, move toward the start until a non-number char is encountered.
+        for (int i = newNameBuilder.length() - 1;
+             (newNameBuilder.charAt(i) >= '0' && newNameBuilder.charAt(i) <= '9');
+             i--) {
+            newNameSuffixBuilder.insert(0, newNameBuilder.charAt(i));
+        }
+        // Remove the characters stored in newNameSuffixBuilder from newNameBuilder
+        newNameBuilder.delete(newNameBuilder.length() - newNameSuffixBuilder.length() + 1, newNameBuilder.length());
+
+        // Increment the number contained in newNameSuffixBuilder, or use 0 if it is empty.
+        int newNameSuffix = 0;
+        if (!newNameSuffixBuilder.isEmpty()) {
+            newNameSuffix = Integer.parseInt(newNameSuffixBuilder.toString());
+            newNameSuffix++;
+        }
+
+        newNameBuilder.append(newNameSuffix);
+        return newNameBuilder.toString();
+    }
+
+    /// Handles the removal of structures from the world and saves them to file.
+    ///
+    /// @param caller The ServerPlayerEntity that requested the structure be removed.
+    ///                             Used to remove from the correct world and receives the updated slot.
+    /// @param slot   The structure slot to pull data from. Mutated by this method and
+    ///                             sent back to caller to be saved.
+    /// @return True if the structure was removed successfully; false otherwise.
     public static boolean removeStructure(ServerPlayerEntity caller, StructureSlot slot) {
         if (!slot.isPlaced()) {
             NomadsCamps.LOGGER.debug("Tried to remove {}, but it is not yet placed!", slot.structureName);
             return false;
         }
 
+        assert slot.getOccupiedArea() != null;
         if (saveStructure(caller.getServerWorld(), slot, new BlockPos(
                 slot.getOccupiedArea().getMinX(),
                 slot.getOccupiedArea().getMinY(),
                 slot.getOccupiedArea().getMinZ()
         ), caller.getUuidAsString())) {
-            fillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
-            //fancyFillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
-
             slot.remove();
             returnUpdatedSlot(caller, slot);
+
+            fillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
+            //fancyFillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
+            return true;
         }
 
         return false;
     }
 
+    /// Handles the saving of structures in a similar fashion as the base game's structure blocks.
+    ///
+    /// @param world      The world to save the structure from.
+    /// @param slot       The structure slot to pull data from. Not mutated by this method.
+    /// @param origin     The blockPos to anchor to while saving. Anchors to the (-x, -y, -z) corner.
+    /// @param authorUuid The uuid of the structure's author. Usually the uuid of the player
+    ///                                     that requested this structure be saved.
+    /// @return True if the structure was saved successfully; false otherwise.
+    /// @see net.minecraft.block.entity.StructureBlockBlockEntity
     public static boolean saveStructure(ServerWorld world, StructureSlot slot, BlockPos origin, String authorUuid) {
         //convert structureSize to a Vec3i
         Vec3i structureSizeInt = new Vec3i(
@@ -243,30 +335,47 @@ public class CampBlockEntity extends BlockEntity {
 
     }
 
-    private static boolean fillArea(ServerWorld world, BlockBox area, BlockState state) {
-        // Fill the area
+    /// A quick and dirty way to fill an area with one BlockState. Works in a
+    /// similar way to the base game's /fill command. Doesn't replace blocks
+    /// in the PACKING_IGNORED_BLOCKS tag.
+    ///
+    /// @param world The world to replace blocks in.
+    /// @param area  All applicable blocks in this area will be set to state.
+    /// @param state The BlockState to set everything to.
+    /// @see ModTags
+    private static void fillArea(ServerWorld world, BlockBox area, BlockState state) {
         for (BlockPos pos : BlockPos.iterate(
                 new BlockPos(area.getMinX(), area.getMinY(), area.getMinZ()),
                 new BlockPos(area.getMaxX(), area.getMaxY(), area.getMaxZ()))) {
             if (!world.getBlockState(pos).isIn(ModTags.Blocks.PACKING_IGNORED_BLOCKS))
                 world.setBlockState(pos, state, Block.NOTIFY_ALL);
         }
-        // Mark changed chunks dirty?
-
-        return true;
     }
 
-    // TODO I really love the look of this effect, but it's too janky and exploitable at the moment
-    //  It's probably better to replace all the actual blocks with display entities or something beforehand.
-    //  Until I can find a better solution, I'm switching to fillArea
+    // TODO Refine this method of filling so it's less exploitable.
     // region FANCY FILL AREA
-    private static boolean fancyFillArea(ServerWorld world, BlockBox area, BlockState state) {
+
+    /// Driver method for a nicer-looking way to fill an area with one BlockState. Works
+    /// in a similar way to the base game's /fill command, but fills in slices with a
+    /// slight delay between each slice. Doesn't replace blocks in the
+    /// PACKING_IGNORED_BLOCKS tag. This method just starts up a thread handling the
+    /// actual removal.
+    ///
+    /// @param world The world to replace blocks in.
+    /// @param area  All applicable blocks in this area will be set to state.
+    /// @param state The BlockState to set everything to.
+    private static void fancyFillArea(ServerWorld world, BlockBox area, BlockState state) {
         Thread fancyFillThread = new Thread(() -> _fancyFillArea(world, area, state));
         fancyFillThread.start();
-
-        return true;
     }
 
+    /// A nicer-looking way to fill an area with one BlockState. Works in a similar way
+    /// to the base game's /fill command, but fills in slices with a slight delay between
+    /// each slice. Doesn't replace blocks in the PACKING_IGNORED_BLOCKS tag.
+    ///
+    /// @param world The world to replace blocks in.
+    /// @param area  All applicable blocks in this area will be set to state.
+    /// @param state The BlockState to set everything to.
     private static void _fancyFillArea(ServerWorld world, BlockBox area, BlockState state) {
         int layerSize = area.getBlockCountX() * area.getBlockCountZ();
         int layerCounter = 0;
@@ -281,60 +390,46 @@ public class CampBlockEntity extends BlockEntity {
                 layerCounter++;
 
                 if (layerCounter >= layerSize) {
-                    // TODO find a more elegant way to wait a little bit before continuing.
-                    //  Try to sync it to game ticks?
                     layerCounter = 0;
                     Thread.sleep(50);
                 }
             }
         } catch (InterruptedException e) {
-            // Fall back to the boring method if something goes south.
+            // Fall back to the simple method if something goes south.
             NomadsCamps.LOGGER.debug("The structure removal process was interrupted.");
             fillArea(world, area, state);
         }
-        // Mark changed chunks dirty?
     }
     // endregion FANCY FILL AREA
 
     // endregion STRUCTURES
 
-    // region NETWORKING
-    private static void updateStructureSlots(ServerPlayerEntity player) {
-        Path structureDirectory = player.server
-                .getSavePath(WorldSavePath.GENERATED)
-                .resolve(NomadsCamps.MOD_ID)
-                .resolve(player.getNameForScoreboard().toLowerCase());
-
-        ServerPlayNetworking.send(player, new ReturnSlotsPayload(NomadsCamps.getStructureSlotsFromFile(structureDirectory)));
-    }
-
+    /// Sends a packet to the client containing a recently modified structure slot
+    /// that needs to be updated.
+    ///
+    /// @param player The ServerPlayerEntity to send the packet to.
+    /// @param slot   The modified slot being sent.
     private static void returnUpdatedSlot(ServerPlayerEntity player, StructureSlot slot) {
         ArrayList<StructureSlot> list = new ArrayList<>();
         list.add(slot);
 
         ServerPlayNetworking.send(player, new ReturnSlotsPayload(list));
     }
-    // endregion NETWORKING
 
-    // region DATA SAVING
-    public UUID getUuid() { return uuid; }
-
+    /// Used by the base game to put an entity's data into an NBT compound.
     @Override
     public void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
-        //BlockEntity is an abstract class, so this shouldn't be necessary
-        //but if something breaks, uncomment it.
         super.writeNbt(nbt, registries);
-        if(uuid != null)
+        if (uuid != null)
             nbt.putUuid("uuid", uuid);
-        if(ownerName != null)
+        if (ownerName != null)
             nbt.putString("owner", ownerName);
     }
 
+    /// Used by the base game to extract an entity's data from an NBT compound.
     @Override
     public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
-        //super.readNbt(nbt, registries);
-        if(nbt.contains("uuid")) uuid = nbt.getUuid("uuid");
-        if(nbt.contains("owner")) ownerName = nbt.getString("owner");
+        if (nbt.contains("uuid")) uuid = nbt.getUuid("uuid");
+        if (nbt.contains("owner")) ownerName = nbt.getString("owner");
     }
-    // endregion DATA SAVING
 }

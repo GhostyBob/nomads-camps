@@ -3,7 +3,6 @@
 	"package": "com.ghosty.nomadscamps.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-      "ModEntityDataSaverMixin",
       "TaggedStructureTemplateMixin",
       "PalettedBlockInfoListAccessorMixin"
 	],

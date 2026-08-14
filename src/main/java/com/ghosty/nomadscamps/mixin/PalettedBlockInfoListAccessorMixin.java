@@ -1,3 +1,6 @@
+/// @Author GhostyBob
+/// @Version 8/14/26
+
 package com.ghosty.nomadscamps.mixin;
 
 import net.minecraft.structure.StructureTemplate;

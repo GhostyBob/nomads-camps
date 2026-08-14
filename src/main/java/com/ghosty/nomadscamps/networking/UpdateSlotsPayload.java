@@ -1,3 +1,6 @@
+/// @Author GhostyBob
+/// @Version 8/14/26
+
 package com.ghosty.nomadscamps.networking;
 
 import com.ghosty.nomadscamps.NomadsCamps;
@@ -7,10 +10,14 @@ import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
 
+/// The payload used when the client requests a list of structure slots from the server.
+///
+/// @param changed True if this packet is sending a list of changed slots to be saved; False if it's
+///                just requesting the saved list.
+/// @param slots   The list of changed slots for the server to write to file. Unused if changed is false.
 public record UpdateSlotsPayload(boolean changed, ArrayList<StructureSlot> slots) implements CustomPayload {
     public static final Identifier UPDATE_SLOTS_ID = Identifier.of(NomadsCamps.MOD_ID, "update_slot_data");
     public static final CustomPayload.Id<UpdateSlotsPayload> ID = new CustomPayload.Id<>(UPDATE_SLOTS_ID);
@@ -25,5 +32,7 @@ public record UpdateSlotsPayload(boolean changed, ArrayList<StructureSlot> slots
             );
 
     @Override
-    public Id<? extends CustomPayload> getId() { return ID; }
+    public Id<? extends CustomPayload> getId() {
+        return ID;
+    }
 }

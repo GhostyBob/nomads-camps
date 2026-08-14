@@ -1,3 +1,6 @@
+/// @Author GhostyBob
+/// @Version 8/14/26
+
 package com.ghosty.nomadscamps.networking;
 
 import com.ghosty.nomadscamps.NomadsCamps;
@@ -9,6 +12,11 @@ import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
+/// The payload used when a client requests the server do something with a structure.
+///
+/// @param type   Dictates which action will be taken. 1 is "build", 2 is "remove".
+/// @param slot   The structure slot being placed, removed, etc.
+/// @param origin The world position to place the slot at. Unused when removing a structure.
 public record StructureActionPayload(int type, StructureSlot slot, BlockPos origin) implements CustomPayload {
     public static final Identifier STRUCTURE_ACTION_ID = Identifier.of(NomadsCamps.MOD_ID, "structure_placement_action");
     public static final CustomPayload.Id<StructureActionPayload> ID = new CustomPayload.Id<>(STRUCTURE_ACTION_ID);
@@ -21,5 +29,7 @@ public record StructureActionPayload(int type, StructureSlot slot, BlockPos orig
             );
 
     @Override
-    public Id<? extends CustomPayload> getId() { return ID; }
+    public Id<? extends CustomPayload> getId() {
+        return ID;
+    }
 }

@@ -18,21 +18,24 @@ import java.util.ArrayList;
 /// Controls the clientside logic of the mod. In charge of networking.
 /// Also keeps a list of this client's structure slots for easy access.
 public class NomadsCampsClient implements ClientModInitializer {
-	// region FIELDS
+    // region FIELDS
     /// The clientside list of structure slots. Shouldn't be set
     /// outside this class.
     private ArrayList<StructureSlot> slots;
+
     /// Getter for the clientside slot list.
     public @Nullable ArrayList<StructureSlot> getSlots() {
         return slots;
     }
+
     /// Allows access to the clientside slot list from a static context.
     public static NomadsCampsClient instance;
     // endregion FIELDS
 
-    /// The client-specific entrypoint for the mod. Defines networking payload handlers
+    /// The client-specific entrypoint for the mod. Defines server-bound networking
+    /// payload handlers
     @Override
-	public void onInitializeClient() {
+    public void onInitializeClient() {
         instance = this;
 
         // Handler for the Show GUI Payload
@@ -48,20 +51,20 @@ public class NomadsCampsClient implements ClientModInitializer {
             // should be the full list of slots.
             if (slots == null) {
                 slots = payload.slots();
-            // If the client's slots are already initialized, we should have just received
-            // a list of dirty slots instead that need to be updated.
+                // If the client's slots are already initialized, we should have just received
+                // a list of dirty slots instead that need to be updated.
             } else {
-                for(StructureSlot newSlot : payload.slots()) {
-                    if(newSlot.isDirty())
-                        this.slots.set(newSlot.getIndex(), newSlot);
+                for (StructureSlot newSlot : payload.slots()) {
+                    if (newSlot.isDirty()) this.slots.set(newSlot.getIndex(), newSlot);
                 }
                 // Once the changes have been incorporated, return the new list of slots to be saved to file.
                 ClientPlayNetworking.send(new UpdateSlotsPayload(true, slots));
             }
         });
-	}
+    }
 
     // region HELPER METHODS
+
     /// Sends an Update Slots Payload to the server, requesting the full list
     /// of structure slots be sent back.
     public static void sendQueryStructuresPacket() {
