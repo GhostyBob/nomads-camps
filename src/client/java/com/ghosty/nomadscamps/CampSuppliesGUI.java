@@ -1,7 +1,8 @@
+/// @Author GhostyBob
+/// @Version 8/14/26
+
 package com.ghosty.nomadscamps;
 
-import com.ghosty.nomadscamps.networking.*;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
@@ -16,19 +17,18 @@ import net.minecraft.util.math.MathHelper;
 import org.apache.commons.lang3.NotImplementedException;
 import org.jetbrains.annotations.Nullable;
 
-import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
+/// Represents the screen displayed to clients when they interact with camp supplies they own.
 public class CampSuppliesGUI extends Screen {
 
     // region FIELDS
-    /// A reference to the last visited screen
+    /// A reference to the last visited screen.
     public Screen prevScreen = null;
     /// The name of the current GUI screen.
     public String address;
-    /// A field to keep track of the structure slot currently being edited
+    /// A field to keep track of the structure slot currently being edited.
     private int currentSlotIndex = -1;
     /// The location of the camp supplies that opened this screen, for structure placement offset purposes.
     private final BlockPos pos;
@@ -46,11 +46,22 @@ public class CampSuppliesGUI extends Screen {
     // endregion FIELDS
 
     // region CONSTRUCTORS
+    /// Constructs a screen of this GUI with no parent.
+    /// Should only be used when opening the starting screen, as backing out of a
+    /// screen using this constructor will close the GUI entirely.
+    /// @param title The address of the screen to display. Mainly used by the init method.
+    /// @param suppliesPos The position of the CampBlockEntity that was clicked to open this GUI.
     public CampSuppliesGUI(String title, BlockPos suppliesPos) {
         super(Text.of(title));
         address = title;
         pos = suppliesPos;
     }
+
+    /// Constructs a screen of this GUI with the given parent.
+    /// Backing out of a screen using this constructor will switch to the parent screen.
+    /// @param title The address of the screen to display. Mainly used by the init method.
+    /// @param prev The screen to set as the parent of this screen.
+    /// @param suppliesPos The position of the CampBlockEntity that was clicked to open this GUI.
     public CampSuppliesGUI(String title, Screen prev, BlockPos suppliesPos) {
         super(Text.of(title));
         address = title;
@@ -60,6 +71,8 @@ public class CampSuppliesGUI extends Screen {
     // endregion CONSTRUCTORS
 
     // region PUBLIC METHODS
+    /// Called by the base game when this object is done being constructed.
+    /// Defines the layout this screen should use, based on the address field.
     @Override
     public void init() {
         switch(address) {
@@ -79,23 +92,37 @@ public class CampSuppliesGUI extends Screen {
         }
     }
 
+    /// Used by the base game to render the screen. It's only overridden
+    /// to draw the background image below everything else.
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        drawBackground(context, delta, mouseX, mouseY);
+        int i = (this.width - this.backgroundWidth) / 2;
+        int j = (this.height - this.backgroundHeight) / 2;
+        context.drawTexture(BACKGROUND_TEXTURE, i, j, 0, 0.0F, 0.0F, this.backgroundWidth, this.backgroundHeight, 256, 256);
         super.render(context, mouseX, mouseY, delta);
     }
 
+    /// Used by the base game when the player backs out of the GUI (default esc).
+    /// Sets the displayed screen to this screen's parent, or nothing if the parent is null.
     @Override
-    public void close() {this.client.setScreen(prevScreen);}
+    public void close() {
+        assert this.client != null;
+        this.client.setScreen(prevScreen);
+    }
 
-    public void forceClose() {this.client.setScreen(null);}
+    /// Used by this mod to clear the GUI, regardless of whether this screen has a parent or not.
+    public void forceClose() {
+        assert this.client != null;
+        this.client.setScreen(null);
+    }
     // endregion PUBLIC METHODS
 
     // region PAGE LAYOUTS
+    /// The page layout for the structure list; currently the first screen
+    /// encountered when opening the GUI.
     private void openStructureList() {
-        ButtonWidget closeButton = ButtonWidget.builder(ScreenTexts.BACK, (btn) -> {
-            this.close();
-        }).dimensions(
+        // Set up the close button
+        ButtonWidget closeButton = ButtonWidget.builder(ScreenTexts.BACK, (btn) -> this.close()).dimensions(
                 (width / 2) + (backgroundWidth / 2) - 65,
                 (height / 2) + (backgroundHeight / 2) - 25,
                 60,
@@ -103,23 +130,27 @@ public class CampSuppliesGUI extends Screen {
         ).build();
         this.addDrawableChild(closeButton);
 
-        //Fetch saved structures
+        // Fetch saved structures
         if (NomadsCampsClient.instance.getSlots() == null) {
             queryStructures();
         } else {
+            // Set up the structure list itself
             structureListWidget structureList = new structureListWidget(client,
                     backgroundWidth - 15,
                     backgroundHeight - 35,
-                    (super.width / 2 - backgroundWidth / 2) + 5,
-                    (super.height / 2 - backgroundHeight / 2) + 5,
+                    (width / 2 - backgroundWidth / 2) + 5,
+                    (height / 2 - backgroundHeight / 2) + 5,
                     this
             );
             this.addDrawableChild(structureList);
         }
     }
 
+    /// The page layout for the structure placer, used when the player opens an
+    /// entry in the structure list.
     private void openStructurePlacer() {
 
+        // Set up the offset sliders for x, y, and z
         OffsetSliderWidget xOffsetSlider = new OffsetSliderWidget(
                 width / 2 - backgroundWidth / 2 + 20,
                 height / 2 - backgroundHeight / 4 - 30,
@@ -131,7 +162,7 @@ public class CampSuppliesGUI extends Screen {
         addDrawableChild(xOffsetSlider);
 
         OffsetSliderWidget yOffsetSlider = new OffsetSliderWidget(
-                width / 2  - backgroundWidth / 2 + 20,
+                width / 2 - backgroundWidth / 2 + 20,
                 height / 2 - backgroundHeight / 4,
                 backgroundWidth - 40,
                 20,
@@ -150,9 +181,11 @@ public class CampSuppliesGUI extends Screen {
         );
         addDrawableChild(zOffsetSlider);
 
+        // Set up the place button
         ButtonWidget placeButton = ButtonWidget.builder(Text.of("Place"), (btn) -> {
-                    StructureSlot slot = NomadsCampsClient.instance.getSlots().get(currentSlotIndex);
-                    sendBuildPacket(
+            assert NomadsCampsClient.instance.getSlots() != null;
+            StructureSlot slot = NomadsCampsClient.instance.getSlots().get(currentSlotIndex);
+                    NomadsCampsClient.sendBuildPacket(
                             slot,
                             new BlockPos(
                                     pos.getX() + (xOffsetSlider.offset),
@@ -163,19 +196,33 @@ public class CampSuppliesGUI extends Screen {
                     forceClose();
                 }
         ).dimensions(
-                (super.width / 2) - 30,
-                (super.height / 2) + (backgroundHeight / 4) - 10,
+                (width / 2) - (backgroundWidth / 4) - 30,
+                (height / 2) + (backgroundHeight / 4) - 10,
                 60,
                 20
         ).build();
         this.addDrawableChild(placeButton);
+
+        // Set up the close button
+        ButtonWidget closeButton = ButtonWidget.builder(ScreenTexts.BACK, (btn) -> this.close()).dimensions(
+                (width / 2) + (backgroundWidth / 4) - 30,
+                (height / 2) + (backgroundHeight / 4) - 10,
+                60,
+                20
+        ).build();
+        this.addDrawableChild(closeButton);
     }
 
+    /// The page layout for the slot editor. Used when the player presses the edit button
+    /// on an entry in the structure list.
+    /// Displays the slot's name, size, and location.
+    /// This is where the player will eventually be able to upgrade their structure slots.
+    /// TODO refine this screen & implement slot upgrades.
     private void openSlotEditor() {
+        assert NomadsCampsClient.instance.getSlots() != null;
         StructureSlot currentSlot = NomadsCampsClient.instance.getSlots().get(currentSlotIndex);
 
-        // TODO refine this screen
-        // region NAME FIELD
+        // Set up the structure name field
         TextFieldWidget nameField = new TextFieldWidget(
                 textRenderer,
                 width / 2 - 100,
@@ -186,9 +233,9 @@ public class CampSuppliesGUI extends Screen {
         );
         nameField.setText(currentSlot.structureName);
         this.addDrawableChild(nameField);
-        // endregion NAME FIELD
 
         // region SLOT DESCRIPTION
+        // Build the text for the slot size description
         StringBuilder slotDescBuilder = new StringBuilder("This slot encompasses a ");
         slotDescBuilder.append(currentSlot.sizeX());
         slotDescBuilder.append("x");
@@ -198,6 +245,7 @@ public class CampSuppliesGUI extends Screen {
         slotDescBuilder.append(" block space.");
         Text slotSize = Text.of(slotDescBuilder.toString());
 
+        // Set up the line describing the slot size
         TextWidget slotSizeDescription = new TextWidget(
                 width / 2 - backgroundWidth / 2,
                 height / 2 - (2 * textRenderer.fontHeight),
@@ -207,12 +255,14 @@ public class CampSuppliesGUI extends Screen {
                 textRenderer);
         this.addDrawableChild(slotSizeDescription);
 
+        // Build the text for the slot location description
         slotDescBuilder = new StringBuilder("This structure ");
         if(currentSlot.structureFileName.equals(NomadsCamps.DEFAULT_STRUCTURE_FILENAME))
         {
             slotDescBuilder.append("has never been placed.");
         }
         else if(currentSlot.isPlaced()) {
+            assert currentSlot.getOccupiedArea() != null;
             slotDescBuilder.append("is placed near ");
             slotDescBuilder.append(currentSlot.getOccupiedArea().getMinX());
             slotDescBuilder.append(", ");
@@ -225,6 +275,7 @@ public class CampSuppliesGUI extends Screen {
         }
         Text slotPosition = Text.of(slotDescBuilder.toString());
 
+        // Set up the line describing slot location
         TextWidget slotPosDescription = new TextWidget(
                 width / 2 - backgroundWidth / 2,
                 height / 2 + textRenderer.fontHeight,
@@ -235,7 +286,7 @@ public class CampSuppliesGUI extends Screen {
         this.addDrawableChild(slotPosDescription);
         // endregion SLOT DESCRIPTION
 
-        // region SAVE / CLOSE BUTTONS
+        // Set up the save and close button
         ButtonWidget saveButton = ButtonWidget.builder(
                 ScreenTexts.DONE,
                 (btn) -> {
@@ -250,11 +301,10 @@ public class CampSuppliesGUI extends Screen {
         .build();
         this.addDrawableChild(saveButton);
 
+        // Set up the close without saving button
         ButtonWidget closeButton = ButtonWidget.builder(
                         ScreenTexts.CANCEL,
-                        (btn) -> {
-                            close();
-                        }
+                        (btn) -> close()
                 ).dimensions(
                         width / 2 + 5,
                         height / 2 + backgroundHeight / 2 - 30,
@@ -262,181 +312,185 @@ public class CampSuppliesGUI extends Screen {
                         20)
                 .build();
         this.addDrawableChild(closeButton);
-        // endregion SAVE / CLOSE BUTTONS
     }
     //endregion PAGE LAYOUTS
 
     // region HELPER METHODS
-    protected CampSuppliesGUI switchScreen(String title, @Nullable Screen parent, @Nullable Integer index) {
+    /// Controls switching to new screens within the GUI.
+    /// Use this method instead of constructing new screens directly.
+    ///
+    /// @param title  The address of the screen to switch to.
+    /// @param parent The (optional) screen to use as the new screen's parent.
+    /// @param index  The index of the currently examined slot.
+    ///               Used when switching to the structure placer and editor.
+    protected void switchScreen(String title, @Nullable Screen parent, @Nullable Integer index) {
+        CampSuppliesGUI output;
         if(parent == null) {
-            CampSuppliesGUI output = new CampSuppliesGUI(title, pos);
-            if (index != null) output.currentSlotIndex = index;
-            this.client.setScreen(output);
-            return output;
+            output = new CampSuppliesGUI(title, pos);
         } else {
-            CampSuppliesGUI output = new CampSuppliesGUI(title, parent, pos);
-            if (index != null) output.currentSlotIndex = index;
-            this.client.setScreen(output);
-            return output;
+            output = new CampSuppliesGUI(title, parent, pos);
         }
+        if (index != null) output.currentSlotIndex = index;
+        assert this.client != null;
+        this.client.setScreen(output);
     }
 
-    protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-        int i = (this.width - this.backgroundWidth) / 2;
-        int j = (this.height - this.backgroundHeight) / 2;
-        context.drawTexture(BACKGROUND_TEXTURE, i, j, 0, 0.0F, 0.0F, this.backgroundWidth, this.backgroundHeight, 256, 256);
-    }
-    // endregion HELPER METHODS
-
-    // region NETWORKING
+    /// Handles the setup of the GUI's structure list when the client's structure
+    /// slot list isn't set up yet.
+    /// Spins up a thread running receiveStructures to wait for the return packet
+    /// from the server.
     private void queryStructures() {
-        ClientPlayNetworking.send(new UpdateSlotsPayload(false, new ArrayList<>()));
+        NomadsCampsClient.sendQueryStructuresPacket();
 
         Thread structureListWaiter = new Thread(this::receiveStructures);
         structureListWaiter.start();
     }
 
-    public void receiveStructures() {
+    /// Waits for the client's list of structure slots to be populated, then sets up
+    /// the structure list if its page is still being displayed.
+    /// TODO Find something for this thread to do while it waits.
+    private void receiveStructures() {
         try {
+            // Wait for the list to become populated
             while (NomadsCampsClient.instance.getSlots() == null)
                 Thread.sleep(10);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
 
+        // Don't set up the structure list if the screen has changed.
         if(!address.equals("structureList"))
             return;
 
-        structureListWidget structureList = new structureListWidget(client,
+        // Set up the structure list
+        CampSuppliesGUI.structureListWidget structureList = new structureListWidget(client,
                 backgroundWidth - 15,
                 backgroundHeight - 35,
-                (super.width / 2 - backgroundWidth / 2) + 5,
-                (super.height / 2 - backgroundHeight / 2) + 5,
+                (width / 2 - backgroundWidth / 2) + 5,
+                (height / 2 - backgroundHeight / 2) + 5,
                 this
         );
         this.addDrawableChild(structureList);
     }
+    // endregion HELPER METHODS
 
-    private void sendBuildPacket(StructureSlot slot, BlockPos origin) {
-        ClientPlayNetworking.send(new StructureActionPayload(1, slot, origin));
-    }
-
-    protected void sendRemovePacket(StructureSlot slot) {
-        ClientPlayNetworking.send(new StructureActionPayload(2, slot, BlockPos.ORIGIN));
-    }
-
-    protected void sendSavePacket(StructureSlot slot, BlockPos origin) {
-        ClientPlayNetworking.send(new StructureActionPayload(3, slot, origin));
-    }
-    // endregion NETWORKING
-
-    // Inner class to display the structure list
-    private class structureListWidget extends ElementListWidget<structureListWidget.structureEntry> {
+    /// A custom widget representing the list of structure slots displayed on the
+    /// structure list screen.
+    private static class structureListWidget extends ElementListWidget<structureListWidget.structureEntry> {
+        /// A reference to the GUI containing this widget.
         private final CampSuppliesGUI parentGui;
 
-        // Constructor
+        /// Constructs an instance of this widget.
+        /// @param client The client instance running the GUI containing this widget.
+        /// Required for the super constructor.
+        /// @param width The width of this widget.
+        /// @param height The height of this widget.
+        /// @param x The x position of the top-left corner of this widget.
+        /// @param y The y position of the top-left corner of this widget.
+        /// @param gui The GUI containing this widget.
         structureListWidget(MinecraftClient client, int width, int height, int x, int y, CampSuppliesGUI gui) {
             super(client, width + 4, height, y, 20);
             this.setX(x);
             parentGui = gui;
 
-            Collator collator = Collator.getInstance(Locale.getDefault()); //What is this??? It's something used to sort the entries
+            // Used by the superclass to sort its list entries, but this widget sorts them manually.
+            // Retained in case a working collator is needed on short notice.
+            //Collator collator = Collator.getInstance(Locale.getDefault());
 
-            //Add entries to the list using this.addEntry(theEntryToAdd)
-            for(StructureSlot s : NomadsCampsClient.instance.getSlots()) {
-                this.addEntry(new structureEntry(s, width - 8, 20, this.getX()));
+            // Populate the list
+            ArrayList<StructureSlot> slots = NomadsCampsClient.instance.getSlots();
+            if(slots == null) return;
+
+            for(StructureSlot s : slots) {
+                this.addEntry(new structureEntry(s, width - 8, 20));
             }
         }
 
         // region METHODS
-        public void setSelected(@Nullable structureEntry passedEntry) {
-            super.setSelected(passedEntry);
-
-            //Store the passed entry in the parent for use
-        }
-
-        //To control the location of the scroll bar
+        /// Overridden to give better control of the scroll bar position.
         @Override
         public int getRowLeft() {
             return this.getX() + 4;
         }
 
+        /// Overridden to give better control of the scroll bar position.
         @Override
         public int getRowWidth() {
             return this.width - 8;
         }
 
+        /// Overridden to give better control of the scroll bar position.
         @Override
         protected int getDefaultScrollbarX() {
             return this.getRowLeft() + this.getRowWidth() - 2;
         }
         // endregion METHODS
 
-        // Inner inner class to represent an entry in the structure list
+        /// Represents a single entry in a structureListWidget.
         class structureEntry extends ElementListWidget.Entry<structureEntry> {
 
             // region FIELDS
-            private int x;
-
+            /// Represents the number of pixels to place between the buttons in a structureEntry.
             private final int ELEMENT_PADDING = 2;
 
-            // Elements in this entry
-            private final StructureSlot structureSlot;
-            //Icon?
-            private final String name;
-            private ButtonWidget nameButton;
-            private ButtonWidget editButton;
-            //Edit button?
+            /// A list of all the components of this entry.
+            private final ArrayList<ButtonWidget> children = new ArrayList<>();
 
-            private ArrayList<ButtonWidget> children = new ArrayList<ButtonWidget>();
+            /// The button leading to the structure placer screen.
+            private final ButtonWidget nameButton;
+            /// The button leading to the slot editor screen.
+            private final ButtonWidget editButton;
             // endregion FIELDS
 
-            // Constructor
-            public structureEntry(StructureSlot slot, int width, int height, int x) {
-                this.structureSlot = slot;
-                this.name = slot.structureName;
-                this.x = x;
+            /// Constructs a new structureEntry.
+            /// @param slot The structure slot being represented by this entry.
+            /// @param width The width of this entry (usually the width of the list minus some
+            /// padding). The name and edit buttons will stretch horizontally to fill most of
+            /// the width.
+            /// @param height The height of this entry. The name and edit buttons will stretch
+            /// vertically to fill the full height.
+            public structureEntry(StructureSlot slot, int width, int height) {
+                String name = slot.structureName;
 
-                if(!structureSlot.isPlaced()) {
-                    nameButton = ButtonWidget.builder(Text.of(name), (btn) -> {
-                        parentGui.switchScreen("structurePlacer", parentGui, slot.getIndex());
-                    }).dimensions(0, 0, width - 40 - ELEMENT_PADDING, height).build();;
+                // Set up the name button, prepending some text to indicate whether
+                // it's currently placed
+                if(!slot.isPlaced()) {
+                    nameButton = ButtonWidget.builder(Text.of(name), (btn) ->
+                            parentGui.switchScreen("structurePlacer", parentGui, slot.getIndex()))
+                            .dimensions(0, 0, width - 40 - ELEMENT_PADDING, height).build();
                     children.add(nameButton);
                 } else {
                     nameButton = ButtonWidget.builder(Text.of("Pack up " + name), (btn) -> {
                         parentGui.currentSlotIndex = slot.getIndex();
-                        parentGui.sendRemovePacket(slot);
+                        NomadsCampsClient.sendRemovePacket(slot);
                         parentGui.close();
                     }).dimensions(0, 0, width - 40 - ELEMENT_PADDING, height).build();
                     children.add(nameButton);
                 }
 
-                editButton = ButtonWidget.builder(Text.of("Edit"), (btn) -> {
-                    parentGui.switchScreen("slotEditor", parentGui, slot.getIndex());
-                }).dimensions(0, 0, 40, height).build();
+                // Set up the edit button
+                editButton = ButtonWidget.builder(Text.of("Edit"), (btn) ->
+                        parentGui.switchScreen("slotEditor", parentGui, slot.getIndex()))
+                        .dimensions(0, 0, 40, height).build();
                 children.add(editButton);
-                //other buttons...
             }
 
             // region METHODS
+            /// Used by the base game to tab-navigate through the components of this entry.
             public List<? extends Selectable> selectableChildren() {
                 return children;
             }
 
+            /// Used by the base game to render the components of this entry.
+            /// In this case, it's functionally identical to calling selectableChildren.
             public List<? extends Element> children() {
                 return children;
             }
 
-            //Not entirely sure what these 3 are/do; I just copied them over from
-            //CustomizeBuffetLevelScreen and switched the variables to match
-//            @Override
-//            public Text getNarration() {
-//                return Text.translatable("narrator.select", new Object[]{Text.of(this.name)});
-//            }
-
+            /// Used by the base game to draw this entry. Overridden to put the buttons
+            /// in the proper place.
             @Override
             public void render(DrawContext context, int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean hovered, float tickDelta) {
-                //context.drawCenteredTextWithShadow(CampSuppliesGUI.this.textRenderer, this.name, x + (CampSuppliesGUI.super.width / 4), y + 15, 16777215);
                 nameButton.setPosition(getRowLeft(), (int) (y * 1.1 - 4));
                 nameButton.render(context, mouseX, mouseY, tickDelta);
 
@@ -444,6 +498,7 @@ public class CampSuppliesGUI extends Screen {
                 editButton.render(context, mouseX, mouseY, tickDelta);
             }
 
+            /// Used by the base game to handle clicks on this entry.
             @Override
             public boolean mouseClicked(double mouseX, double mouseY, int button) {
                 structureListWidget.this.setSelected(this);
@@ -453,18 +508,34 @@ public class CampSuppliesGUI extends Screen {
         }
     }
 
-    // Inner class to represent placement offset sliders
-    private class OffsetSliderWidget extends SliderWidget {
-        private final int maxOffset = 16;
+    /// Custom widget to represent the offset sliders in the structure placer.
+    private static class OffsetSliderWidget extends SliderWidget {
+        /// The furthest distance (in either direction along any given axis)
+        /// that a structure can be placed from its Camp Supplies.
+        /// Values over ~32 aren't recommended so that the sliders feel good to control.
+        private final int MAX_OFFSET = NomadsCamps.CONFIG.maxPlacementOffset();
+        /// The offset currently stored in this slider. Formatted to be added to a
+        /// blockPos dimension right out of the box.
         public int offset = 0;
-        private Text label;
+        /// The label on this slider (not including the current slider value).
+        private final Text label;
 
+        /// Constructs an instance of this widget.
+        /// @param x The x position of the top left corner of this widget.
+        /// @param y The y position of the top left corner of this widget.
+        /// @param width The width of this widget.
+        /// @param height The height of this widget.
+        /// @param dimension The dimension (x, y, or z) that this slider represents.
+        /// Only used for the slider's label.
+        /// @param value The initial value that this slider should be set to.
         public OffsetSliderWidget(int x, int y, int width, int height, String dimension, double value) {
             super(x, y, width, height, ScreenTexts.EMPTY, value);
             label = Text.of(dimension + " Offset");
             updateMessage();
         }
 
+        /// Updates the label displayed on the slider. Called by the base game whenever
+        /// the slider is adjusted.
         @Override
         protected void updateMessage() {
             this.setMessage(ScreenTexts.composeGenericOptionText(
@@ -473,9 +544,13 @@ public class CampSuppliesGUI extends Screen {
             ));
         }
 
+        /// Turns the value stored in the slider into something usable. Called by the
+        /// base game whenever the slider is adjusted. In this case, it just formats
+        /// the slider value into a block offset and stores it in offset to keep the
+        /// value up to date.
         @Override
         protected void applyValue() {
-            offset = (int) MathHelper.lerp(MathHelper.clamp(this.value, 0.0F, 1.0F), -maxOffset, maxOffset);
+            offset = (int) MathHelper.lerp(MathHelper.clamp(this.value, 0.0F, 1.0F), -MAX_OFFSET, MAX_OFFSET);
         }
     }
 }

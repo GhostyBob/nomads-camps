@@ -12,5 +12,7 @@ public class NomadsCampsConfigModel {
     public int startingSlotSizeY = 4;
     public int startingSlotSizeZ = 4;
 
+    public int maxPlacementOffset = 8;
+
     public boolean slotsCaptureEntities = false;
 }
