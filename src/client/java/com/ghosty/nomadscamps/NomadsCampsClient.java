@@ -55,7 +55,7 @@ public class NomadsCampsClient implements ClientModInitializer {
                 // a list of dirty slots instead that need to be updated.
             } else {
                 for (StructureSlot newSlot : payload.slots()) {
-                    if (newSlot.isDirty()) this.slots.set(newSlot.getIndex(), newSlot);
+                    this.slots.set(newSlot.getIndex(), newSlot);
                 }
                 // Once the changes have been incorporated, return the new list of slots to be saved to file.
                 ClientPlayNetworking.send(new UpdateSlotsPayload(true, slots));

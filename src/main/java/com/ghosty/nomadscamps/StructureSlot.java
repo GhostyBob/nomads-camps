@@ -1,67 +1,82 @@
+/// @Author GhostyBob
+/// @Version 8/14/26
+
 package com.ghosty.nomadscamps;
 
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
-import java.util.Optional;
 
+/// Holds all the data associated with a Camp Supplies structure
 public class StructureSlot {
-    // region FIELDS
+    /// The human-readable name of the structure. Displayed in the camp supplies GUI.
     public String structureName;
+    /// The machine-readable name of the structure. Used as a unique identifier for
+    /// the structure and when saving to file.
     public Identifier structureFileName;
-    private int index;
+    /// This slot's index within the structure list. Used to keep slots straight
+    /// when updating name and filename data.
+    private final int index;
 
+    /// The area occupied by the structure slot. Null if the structure isn't currently
+    /// placed.
     @Nullable
     private BlockBox occupiedArea;
+    /// The max structure size for this slot along the x-axis.
     private final int sizeX;
+    /// The max structure size for this slot along the y-axis.
     private final int sizeY;
+    /// The max structure size for this slot along the z-axis.
     private final int sizeZ;
+    /// Whether the structure is currently placed in the world.
     private boolean isPlaced;
+    /// Whether the structure should "capture" the entities in the structure's area
+    /// when it is packed.
     private final boolean captureEntities;
 
-    private boolean dirty = false;
-    // endregion FIELDS
-
+    /// A PacketCodec telling the game how to write the data of a StructureSlot into a
+    /// networking packet, as well as how to turn a networking packet back into a
+    /// StructureSlot object.
     // region CODEC DEFINITION
     public static final PacketCodec<RegistryByteBuf, StructureSlot> PACKET_CODEC =
             PacketCodec.of((value, buf) -> {
-                        buf.writeString(value.structureName);
-                        buf.writeString(value.structureFileName.toString());
-                        buf.writeInt(value.index);
-                        buf.writeNullable(
-                                value.isPlaced() ?
-                                        new BlockPos(
-                                                value.getOccupiedArea().getMinX(),
-                                                value.getOccupiedArea().getMinY(),
-                                                value.getOccupiedArea().getMinZ()) :
-                                        null,
-                                (buf1, value1) -> buf1.writeBlockPos(value1)
-                        );
-                        buf.writeInt(value.sizeX());
-                        buf.writeInt(value.sizeY());
-                        buf.writeInt(value.sizeZ());
-                        buf.writeBoolean(value.canCaptureEntities());
-                        buf.writeBoolean(value.isDirty());
-                    }, buf -> new StructureSlot(
-                        buf.readString(),
-                        Identifier.of(buf.readString()),
-                        buf.readInt(),
-                        buf.readNullable(buf1 -> buf1.readBlockPos()),
-                        buf.readInt(),
-                        buf.readInt(),
-                        buf.readInt(),
-                        buf.readBoolean(),
-                        buf.readBoolean()
-                    ));
+                buf.writeString(value.structureName);
+                buf.writeString(value.structureFileName.toString());
+                buf.writeInt(value.index);
+                buf.writeNullable(
+                        value.isPlaced() ?
+                                new BlockPos(
+                                        Objects.requireNonNull(value.getOccupiedArea()).getMinX(),
+                                        Objects.requireNonNull(value.getOccupiedArea()).getMinY(),
+                                        Objects.requireNonNull(value.getOccupiedArea()).getMinZ()) :
+                                null,
+                        (buf1, value1) -> buf1.writeBlockPos(value1)
+                );
+                buf.writeInt(value.sizeX());
+                buf.writeInt(value.sizeY());
+                buf.writeInt(value.sizeZ());
+                buf.writeBoolean(value.canCaptureEntities());
+            }, buf -> new StructureSlot(
+                    buf.readString(),
+                    Identifier.of(buf.readString()),
+                    buf.readInt(),
+                    buf.readNullable(buf1 -> buf1.readBlockPos()),
+                    buf.readInt(),
+                    buf.readInt(),
+                    buf.readInt(),
+                    buf.readBoolean()
+            ));
     // endregion CODEC DEFINITION
 
-    // region CONSTRUCTORS
+    /// Constructs a StructureSlot with the default values (pulled from the .config)
+    /// and the given index.
+    ///
+    /// @param index This slot's position within the structure list.
     public StructureSlot(int index) {
         occupiedArea = null;
         isPlaced = false;
@@ -77,8 +92,9 @@ public class StructureSlot {
         captureEntities = NomadsCamps.CONFIG.slotsCaptureEntities();
     }
 
-    // This constructor should only be used by the codec defined above
-    private StructureSlot(String name, Identifier fileName, int index, @Nullable BlockPos min, int sizeX, int sizeY, int sizeZ, boolean captureEntities, boolean dirty) {
+    /// Constructs a StructureSlot by manually setting all of its fields.
+    /// Should only be used by the codec defined above.
+    private StructureSlot(String name, Identifier fileName, int index, @Nullable BlockPos min, int sizeX, int sizeY, int sizeZ, boolean captureEntities) {
         structureName = name;
         structureFileName = fileName;
         this.index = index;
@@ -93,54 +109,70 @@ public class StructureSlot {
         } else occupiedArea = null;
 
         this.captureEntities = captureEntities;
-        this.dirty = dirty;
     }
 
-    public StructureSlot(StructureSlot dirtySlot) {
-        structureName = dirtySlot.structureName;
-        structureFileName = dirtySlot.structureFileName;
-        isPlaced = dirtySlot.isPlaced;
-        occupiedArea = dirtySlot.occupiedArea;
-        sizeX = dirtySlot.sizeX;
-        sizeY = dirtySlot.sizeY;
-        sizeZ = dirtySlot.sizeZ;
-        captureEntities = dirtySlot.captureEntities;
-        // The dirty field is intentionally not copied.
+    /// @return This slot's index within the structure slot list.
+    public int getIndex() {
+        return index;
     }
 
-    // Honorary constructor
-    public static final StructureSlot EMPTY = new StructureSlot(-1);
-    // endregion CONSTRUCTORS
+    /// @return A BlockBox representing the area occupied by this structure
+    /// slot, or null if this slot isn't placed in the world.
+    public @Nullable BlockBox getOccupiedArea() {
+        return occupiedArea;
+    }
 
-    // region GETTERS
-    public int getIndex() { return index; }
+    /// @return True if this structure is currently placed in the world;
+    /// false otherwise.
+    public boolean isPlaced() {
+        return isPlaced;
+    }
 
-    public @Nullable BlockBox getOccupiedArea() { return occupiedArea; }
+    /// @return The max structure size for this slot along the x-axis.
+    public int sizeX() {
+        return sizeX;
+    }
 
-    public boolean isPlaced() { return isPlaced; }
+    /// @return The max structure size for this slot along the y-axis
+    public int sizeY() {
+        return sizeY;
+    }
 
-    public int sizeX() { return sizeX; }
-    public int sizeY() { return sizeY; }
-    public int sizeZ() { return sizeZ; }
+    /// @return The max structure size for this slot along the z-axis.
+    public int sizeZ() {
+        return sizeZ;
+    }
 
-    public boolean canCaptureEntities() { return captureEntities; }
+    /// @return Whether this structure should store entities within its
+    /// occupiedArea when being saved and packed.
+    public boolean canCaptureEntities() {
+        return captureEntities;
+    }
 
-    public boolean isDirty() { return dirty; }
-    // endregion GETTERS
-
-    // region METHODS
+    /// Updates the data of this structure slot to represent it being placed
+    /// in the world.
+    ///
+    /// @param minCorner The location that this slot's structure was placed at.
+    ///                                   Anchored to the (-x, -y, -z) corner.
     public void place(BlockPos minCorner) {
         isPlaced = true;
         occupiedArea = getProposedArea(minCorner);
-        markDirty();
     }
 
+    /// Updates the data of this structure slot to represent it being removed
+    /// from the world.
     public void remove() {
         isPlaced = false;
         occupiedArea = null;
-        markDirty();
     }
 
+    /// Calculates the area this slot's structure would occupy if it was placed
+    /// at the given position.
+    ///
+    /// @param origin The position to anchor the simulated structure to. Anchored
+    ///                             to the (-x, -y, -z) corner.
+    /// @return A BlockBox representing what this slot's occupiedArea would be if
+    /// place() was called with the passed position.
     public BlockBox getProposedArea(BlockPos origin) {
         return new BlockBox(
                 origin.getX(),
@@ -151,7 +183,4 @@ public class StructureSlot {
                 origin.getZ() + sizeZ - 1
         );
     }
-
-    public void markDirty() { dirty = true; }
-    // endregion METHODS
 }
