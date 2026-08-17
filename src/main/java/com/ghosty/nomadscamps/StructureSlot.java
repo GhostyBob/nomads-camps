@@ -170,7 +170,7 @@ public class StructureSlot {
     /// at the given position.
     ///
     /// @param origin The position to anchor the simulated structure to. Anchored
-    ///                             to the (-x, -y, -z) corner.
+    ///               to the (-x, -y, -z) corner.
     /// @return A BlockBox representing what this slot's occupiedArea would be if
     /// place() was called with the passed position.
     public BlockBox getProposedArea(BlockPos origin) {

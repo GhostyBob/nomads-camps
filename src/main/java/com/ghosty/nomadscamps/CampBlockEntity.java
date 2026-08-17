@@ -254,12 +254,14 @@ public class CampBlockEntity extends BlockEntity {
              i--) {
             newNameSuffixBuilder.insert(0, newNameBuilder.charAt(i));
         }
-        // Remove the characters stored in newNameSuffixBuilder from newNameBuilder
-        newNameBuilder.delete(newNameBuilder.length() - newNameSuffixBuilder.length() + 1, newNameBuilder.length());
 
-        // Increment the number contained in newNameSuffixBuilder, or use 0 if it is empty.
+
         int newNameSuffix = 0;
         if (!newNameSuffixBuilder.isEmpty()) {
+            // Remove the characters stored in newNameSuffixBuilder from newNameBuilder
+            newNameBuilder.delete(newNameBuilder.length() - newNameSuffixBuilder.length(), newNameBuilder.length());
+
+            // Increment the number contained in newNameSuffixBuilder, or use 0 if it is empty.
             newNameSuffix = Integer.parseInt(newNameSuffixBuilder.toString());
             newNameSuffix++;
         }
@@ -287,11 +289,11 @@ public class CampBlockEntity extends BlockEntity {
                 slot.getOccupiedArea().getMinY(),
                 slot.getOccupiedArea().getMinZ()
         ), caller.getUuidAsString())) {
-            slot.remove();
-            returnUpdatedSlot(caller, slot);
-
             fillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
             //fancyFillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
+
+            slot.remove();
+            returnUpdatedSlot(caller, slot);
             return true;
         }
 
