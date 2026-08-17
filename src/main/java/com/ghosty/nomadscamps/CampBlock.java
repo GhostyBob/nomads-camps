@@ -130,16 +130,25 @@ public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
     /// Used by the base game to determine a block's state when it is placed.
     public BlockState getPlacementState(ItemPlacementContext ctx) {
         Direction anchoredFace = ctx.getSide();
-        // If this was placed on the top or bottom of a block, don't wall mount it.
+
+        // If this was placed on the top or bottom of a block don't
+        // wall mount it.
         if(anchoredFace.equals(Direction.UP) || anchoredFace.equals(Direction.DOWN))
             return getDefaultState()
                     .with(FACING, ctx.getHorizontalPlayerFacing().getOpposite())
                     .with(WALL_MOUNTED, false);
 
-        // If this was placed on the side of a block, wall mount it.
+        // If this was placed on the side of a block and that block
+        // face is a solid full square, wall mount it.
+        boolean onSolidWall =  ctx.getWorld().getBlockState(ctx.getBlockPos().offset(anchoredFace.getOpposite()))
+                .isSideSolidFullSquare(
+                        ctx.getWorld(),
+                        ctx.getBlockPos(),
+                        anchoredFace);
+
         return getDefaultState()
                 .with(FACING, ctx.getHorizontalPlayerFacing().getOpposite())
-                .with(WALL_MOUNTED, true);
+                .with(WALL_MOUNTED, onSolidWall);
     }
 
     /// Used by the base game when a player interacts with this block.

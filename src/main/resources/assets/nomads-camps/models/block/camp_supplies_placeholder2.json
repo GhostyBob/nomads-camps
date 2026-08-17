@@ -7,7 +7,7 @@
 		"2": "nomads-camps:block/camp_supplies3",
 		"3": "nomads-camps:block/camp_supplies4",
 		"4": "nomads-camps:block/camp_supplies5",
-		"particle": "block/texture"
+		"particle": "minecraft:item/leather"
 	},
 	"elements": [
 		{
