@@ -32,13 +32,30 @@ import org.jetbrains.annotations.Nullable;
 /// Defines behavior for the Camp Supplies block (shape, model, item drops, etc.).
 public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
     /// The shape of this block for collision and outline purposes. Only used
-    /// when this block is facing north or south.
+    /// when this block is facing north or south and sitting on the ground.
     private static final VoxelShape NORTH_SOUTH_SHAPE =
             CampBlock.createCuboidShape(2, 0, 4, 14, 13, 12);
     /// The shape of this block for collision and outline purposes. Only used
-    /// when this block is facing east or west.
+    /// when this block is facing east or west and sitting on the ground.
     private static final VoxelShape EAST_WEST_SHAPE =
             CampBlock.createCuboidShape(4, 0, 2, 12, 13, 14);
+    /// The shape of this block for collision and outline purposes. Only used
+    /// when this block is facing north and hanging on a wall.
+    private static final VoxelShape NORTH_MOUNTED_SHAPE =
+            CampBlock.createCuboidShape(2, 2, 8, 14, 15, 16);
+    /// The shape of this block for collision and outline purposes. Only used
+    /// when this block is facing south and hanging on a wall.
+    private static final VoxelShape SOUTH_MOUNTED_SHAPE =
+            CampBlock.createCuboidShape(2, 2, 0, 14, 15, 8);
+    /// The shape of this block for collision and outline purposes. Only used
+    /// when this block is facing east and hanging on a wall.
+    private static final VoxelShape EAST_MOUNTED_SHAPE =
+            CampBlock.createCuboidShape(0, 2, 2, 8, 15, 14);
+    /// The shape of this block for collision and outline purposes. Only used
+    /// when this block is facing west and hanging on a wall.
+    private static final VoxelShape WEST_MOUNTED_SHAPE =
+            CampBlock.createCuboidShape(8, 2, 2, 16, 15, 14);
+
 
     /// Codec definition for networking, chunk saving.
     public static final MapCodec<CampBlock> CODEC = CampBlock.createCodec(CampBlock::new);
@@ -46,23 +63,15 @@ public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
     /// Block state definition to enable rotation of the block.
     public static final DirectionProperty FACING = Properties.HORIZONTAL_FACING;
     /// Block state definition to enable wall mounting the block.
-    //public static final BooleanProperty WALL_MOUNTED = Properties.HANGING;
+    public static final BooleanProperty WALL_MOUNTED = Properties.HANGING;
 
     /// Constructs this class using the method provided by BlockWithEntity,
     /// but also sets a default block state.
     public CampBlock(Settings settings) {
         super(settings);
-        setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.NORTH));
-    }
-
-    /// Used by the base game to get the outline shape of this block for
-    /// collision and rendering purposes. This shape is oriented differently
-    /// depending on this block's state.
-    @Override
-    protected VoxelShape getOutlineShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
-        return state.get(FACING).getAxis().equals(Direction.Axis.X) ?
-                EAST_WEST_SHAPE :
-                NORTH_SOUTH_SHAPE;
+        setDefaultState(getStateManager().getDefaultState()
+                .with(FACING, Direction.NORTH)
+                .with(WALL_MOUNTED, false));
     }
 
     // Some methods that are required by the base game but have no notable logic.
@@ -87,10 +96,7 @@ public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
     @Override
     protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
         builder.add(FACING);
-    }
-
-    public BlockState getPlacementState(ItemPlacementContext ctx) {
-        return getDefaultState().with(FACING, ctx.getHorizontalPlayerFacing());
+        builder.add(WALL_MOUNTED);
     }
 
     public BlockState rotate(BlockState state, BlockRotation rotation) {
@@ -101,6 +107,40 @@ public class CampBlock extends BlockWithEntity implements BlockEntityProvider {
         return state.rotate(mirror.getRotation(state.get(FACING)));
     }
     // endregion TRIVIAL IMPLEMENTATIONS
+
+    /// Used by the base game to get the outline shape of this block for
+    /// collision and rendering purposes. The shape is oriented differently
+    /// depending on this block's state.
+    @Override
+    protected VoxelShape getOutlineShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
+        if(!state.get(WALL_MOUNTED)) {
+            return state.get(FACING).getAxis().equals(Direction.Axis.X) ?
+                    EAST_WEST_SHAPE :
+                    NORTH_SOUTH_SHAPE;
+        }
+
+        return switch(state.get(FACING)) {
+            case Direction.SOUTH -> SOUTH_MOUNTED_SHAPE;
+            case Direction.EAST -> EAST_MOUNTED_SHAPE;
+            case Direction.WEST -> WEST_MOUNTED_SHAPE;
+            default -> NORTH_MOUNTED_SHAPE;
+        };
+    }
+
+    /// Used by the base game to determine a block's state when it is placed.
+    public BlockState getPlacementState(ItemPlacementContext ctx) {
+        Direction anchoredFace = ctx.getSide();
+        // If this was placed on the top or bottom of a block, don't wall mount it.
+        if(anchoredFace.equals(Direction.UP) || anchoredFace.equals(Direction.DOWN))
+            return getDefaultState()
+                    .with(FACING, ctx.getHorizontalPlayerFacing().getOpposite())
+                    .with(WALL_MOUNTED, false);
+
+        // If this was placed on the side of a block, wall mount it.
+        return getDefaultState()
+                .with(FACING, ctx.getHorizontalPlayerFacing().getOpposite())
+                .with(WALL_MOUNTED, true);
+    }
 
     /// Used by the base game when a player interacts with this block.
     @Override
