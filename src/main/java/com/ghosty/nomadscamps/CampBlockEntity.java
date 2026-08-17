@@ -33,20 +33,19 @@ import java.util.*;
 
 /// Defines behavior for the Camp Supplies block entity.
 public class CampBlockEntity extends BlockEntity {
-    /// Trivial constructor; constructs a CampBlockEntity with the
-    /// given state at the given position using the default
-    /// BlockEntity constructor.
-    public CampBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
-    }
-
-    // region OWNERSHIP
     /// The uuid for this block entity. Null if these supplies have no
     /// owner. Set to the owner's player uuid if these supplies are owned.
     private UUID uuid = null;
     /// A human-readable representation of these supplies' owner. Null
     /// if there is no owner.
     private String ownerName = null;
+
+    /// Trivial constructor; constructs a CampBlockEntity with the
+    /// given state at the given position using the default
+    /// BlockEntity constructor.
+    public CampBlockEntity(BlockPos pos, BlockState state) {
+        super(ModBlockEntities.CAMP_BLOCK_ENTITY, pos, state);
+    }
 
     /// Displays the camp supplies GUI to the passed player if these
     /// supplies are unowned or the passed player is the owner. Will
@@ -57,15 +56,24 @@ public class CampBlockEntity extends BlockEntity {
     public void showGUI(PlayerEntity player) {
         // Get the relevant ServerPlayerEntity from the passed PlayerEntity.
         if (player instanceof ServerPlayerEntity serverPlayer) {
+            Path upgradeDirectory = serverPlayer.server
+                    .getSavePath(WorldSavePath.GENERATED)
+                    .resolve(NomadsCamps.MOD_ID)
+                    .resolve(player.getNameForScoreboard().toLowerCase());
+
             if (ownedBy(player)) {
                 // Send a packet to the client to open the camp supplies GUI.
-                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(pos));
+                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(
+                        pos,
+                        NomadsCamps.getUpgradeTracker(upgradeDirectory)));
                 return;
             }
             // Set these supplies' owner to the passed player, then show
             // them the GUI.
             if (uuid == null && setOwner(player)) {
-                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(pos));
+                ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(
+                        pos,
+                        NomadsCamps.getUpgradeTracker(upgradeDirectory)));
                 return;
             }
 
@@ -108,9 +116,6 @@ public class CampBlockEntity extends BlockEntity {
             return "null";
         }
     }
-    // endregion OWNERSHIP
-
-    // region STRUCTURES
 
     /// Handles the placement of structure slots using the same general process as
     /// the base game's structure blocks.
@@ -404,8 +409,6 @@ public class CampBlockEntity extends BlockEntity {
     }
     // endregion FANCY FILL AREA
 
-    // endregion STRUCTURES
-
     /// Sends a packet to the client containing a recently modified structure slot
     /// that needs to be updated.
     ///
@@ -419,6 +422,9 @@ public class CampBlockEntity extends BlockEntity {
     }
 
     /// Used by the base game to put an entity's data into an NBT compound.
+    ///
+    /// @param nbt The nbt compound being written into. Mutated by this
+    ///            method and should be treated as its output.
     @Override
     public void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
         super.writeNbt(nbt, registries);

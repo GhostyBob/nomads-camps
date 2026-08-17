@@ -25,4 +25,11 @@ public class NomadsCampsConfigModel {
 
     /// Whether structure slots can store entities when being packed.
     public boolean slotsCaptureEntities = false;
+
+    /// The number of free slot size upgrades to give players immediately.
+    public int startingSlotSizeUpgrades = 0;
+    /// The number of free slot count upgrades to give players immediately.
+    /// Unless the goal is to tutorialize slot upgrades, it's recommended
+    /// to leave this at 0 and simply add more starting slots instead.
+    public int startingSlotCountUpgrades = 0;
 }

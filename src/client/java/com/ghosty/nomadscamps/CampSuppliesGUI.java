@@ -23,7 +23,6 @@ import java.util.List;
 /// Represents the screen displayed to clients when they interact with camp supplies they own.
 public class CampSuppliesGUI extends Screen {
 
-    // region FIELDS
     /// A reference to the last visited screen.
     public Screen prevScreen = null;
     /// The name of the current GUI screen.
@@ -32,6 +31,8 @@ public class CampSuppliesGUI extends Screen {
     private int currentSlotIndex = -1;
     /// The location of the camp supplies that opened this screen, for structure placement offset purposes.
     private final BlockPos pos;
+    /// A tracker for the potential upgrades that can be made to these slots.
+    private final UpgradeTracker upgrades;
     // Some constants used for the look of the menu.
     private static final Identifier BACKGROUND_TEXTURE = Identifier.ofVanilla("textures/gui/demo_background.png");
     private final int backgroundWidth = 248;
@@ -47,9 +48,7 @@ public class CampSuppliesGUI extends Screen {
     @Override
     protected void applyBlur(float delta) {
     }
-    // endregion FIELDS
 
-    // region CONSTRUCTORS
 
     /// Constructs a screen of this GUI with no parent.
     /// Should only be used when opening the starting screen, as backing out of a
@@ -57,10 +56,12 @@ public class CampSuppliesGUI extends Screen {
     ///
     /// @param title       The address of the screen to display. Mainly used by the init method.
     /// @param suppliesPos The position of the CampBlockEntity that was clicked to open this GUI.
-    public CampSuppliesGUI(String title, BlockPos suppliesPos) {
+    /// @param tracker     The upgrade tracker for the structure list.
+    public CampSuppliesGUI(String title, BlockPos suppliesPos, UpgradeTracker tracker) {
         super(Text.of(title));
         address = title;
         pos = suppliesPos;
+        upgrades = tracker;
     }
 
     /// Constructs a screen of this GUI with the given parent.
@@ -69,15 +70,15 @@ public class CampSuppliesGUI extends Screen {
     /// @param title       The address of the screen to display. Mainly used by the init method.
     /// @param prev        The screen to set as the parent of this screen.
     /// @param suppliesPos The position of the CampBlockEntity that was clicked to open this GUI.
-    public CampSuppliesGUI(String title, Screen prev, BlockPos suppliesPos) {
+    /// @param tracker     The upgrade tracker for the structure list.
+    public CampSuppliesGUI(String title, Screen prev, BlockPos suppliesPos, UpgradeTracker tracker) {
         super(Text.of(title));
         address = title;
         prevScreen = prev;
         pos = suppliesPos;
+        upgrades = tracker;
     }
-    // endregion CONSTRUCTORS
 
-    // region PUBLIC METHODS
 
     /// Called by the base game when this object is done being constructed.
     /// Defines the layout this screen should use, based on the address field.
@@ -123,7 +124,6 @@ public class CampSuppliesGUI extends Screen {
         assert this.client != null;
         this.client.setScreen(null);
     }
-    // endregion PUBLIC METHODS
 
     // region PAGE LAYOUTS
 
@@ -138,6 +138,19 @@ public class CampSuppliesGUI extends Screen {
                 20
         ).build();
         this.addDrawableChild(closeButton);
+
+        // TODO finish this
+        // Set up the TEMP upgrade display
+        TextWidget upgradeDisplay = new TextWidget(
+                (width / 2) - (backgroundWidth / 2) + 5,
+                (height / 2) + (backgroundHeight / 2) - 25,
+                backgroundWidth,
+                textRenderer.fontHeight,
+                Text.of(ScreenTexts.composeGenericOptionText(
+                        Text.of("Upgrade points"),
+                        Text.of(Integer.toString(upgrades.unusedSlotCountUpgrades)))),
+                textRenderer);
+        this.addDrawableChild(upgradeDisplay);
 
         // Fetch saved structures
         if (NomadsCampsClient.instance.getSlots() == null) {
@@ -334,9 +347,9 @@ public class CampSuppliesGUI extends Screen {
     protected void switchScreen(String title, @Nullable Screen parent, @Nullable Integer index) {
         CampSuppliesGUI output;
         if (parent == null) {
-            output = new CampSuppliesGUI(title, pos);
+            output = new CampSuppliesGUI(title, pos, upgrades);
         } else {
-            output = new CampSuppliesGUI(title, parent, pos);
+            output = new CampSuppliesGUI(title, parent, pos, upgrades);
         }
         if (index != null) output.currentSlotIndex = index;
         assert this.client != null;

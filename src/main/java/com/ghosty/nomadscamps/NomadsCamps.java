@@ -4,6 +4,7 @@
 package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.networking.*;
+import com.ghosty.nomadscamps.util.ModTags;
 import com.ghosty.nomadscamps.util.NomadsCampsConfig;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -11,6 +12,7 @@ import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
@@ -50,6 +52,8 @@ public class NomadsCamps implements ModInitializer {
     public void onInitialize() {
         ModBlocks.initialize();
         ModBlockEntities.initialize();
+        ModTags.initialize();
+        ModRecipes.initialize();
 
         // region NETWORKING
         // Server-bound payloads
@@ -162,9 +166,6 @@ public class NomadsCamps implements ModInitializer {
         return true;
     }
 
-    // TODO Make the multithreading here safer. If a new structure is registered
-    //  while another player's thread is finding a file name, a duplicate may be made.
-
     /// Returns a list of all registered structure file names.
     ///
     /// @param structureDirectory The directory to look in for structure files.
@@ -189,5 +190,67 @@ public class NomadsCamps implements ModInitializer {
 
         return output;
     }
+
+    public static void addSlotUpgrade(MinecraftServer server, String playerName) {
+        Path upgradeDirectory = server.getSavePath(WorldSavePath.GENERATED)
+                .resolve(MOD_ID)
+                .resolve(playerName);
+
+        UpgradeTracker upgrades = getUpgradeTracker(upgradeDirectory);
+        // Add an upgrade
+        upgrades.unusedSlotSizeUpgrades++;
+        writeUpgradeTrackerToFile(upgradeDirectory.getParent(), upgrades);
+    }
+
+    /// Retrieves an UpgradeTracker from the given directory.
+    ///
+    /// @param upgradeDirectory The location of the upgrades.json file to build from.
+    /// @return The constructed UpgradeTracker.
+    public static UpgradeTracker getUpgradeTracker(Path upgradeDirectory) {
+        Path target = upgradeDirectory.resolve("upgrades.json");
+
+        Gson jsonParser = new GsonBuilder().create();
+        UpgradeTracker upgrades;
+
+        if (Files.exists(target)) {
+            // If an upgrades.json file is present at the given location, read it.
+            try (Reader reader = Files.newBufferedReader(target)) {
+                upgrades = (jsonParser.fromJson(reader, UpgradeTracker.class));
+            } catch (IOException e) {
+                LOGGER.error("An error occurred while reading a player's upgrade data!", e);
+                upgrades = new UpgradeTracker();
+            }
+        } else {
+            // If no file was present, build one using the default values.
+            upgrades = new UpgradeTracker();
+        }
+
+        return upgrades;
+    }
+
+    /// Saves the passed UpgradeTracker to file.
+    ///
+    /// @param upgradeDirectory The location of the upgrades.json file to write into
+    ///                         or the location where it should be created.
+    /// @param upgrades         The upgrade tracker to write to file.
+    public static void writeUpgradeTrackerToFile(Path upgradeDirectory, UpgradeTracker upgrades) {
+        Path target = upgradeDirectory.resolve("upgrades.json");
+        Gson jsonParser = new GsonBuilder().create();
+
+        // Create the upgrades.json file if it doesn't exist
+        try {
+            Files.createDirectories(target.getParent());
+        } catch (IOException e) {
+            LOGGER.error("An error occurred while creating an upgrade data file!", e);
+            return;
+        }
+        // Write the passed list into the file
+        try (BufferedWriter writer = Files.newBufferedWriter(target)) {
+            jsonParser.toJson(upgrades, writer);
+        } catch (IOException e) {
+            LOGGER.error("An error occurred while writing data to an upgrade data file!", e);
+        }
+    }
+
     // endregion HELPER METHODS
 }

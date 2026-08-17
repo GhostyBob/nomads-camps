@@ -1,0 +1,15 @@
+{
+  "type": "nomads-camps:custom_smithing_transform",
+  "template": {
+    "item": "minecraft:shulker_shell"
+  },
+  "base": {
+    "item": "nomads-camps:camp_supplies"
+  },
+  "addition": {
+    "item": "minecraft:diamond"
+  },
+  "result": {
+    "id": "nomads-camps:camp_supplies"
+  }
+}

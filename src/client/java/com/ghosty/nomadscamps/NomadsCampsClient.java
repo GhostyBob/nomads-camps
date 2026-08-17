@@ -41,7 +41,7 @@ public class NomadsCampsClient implements ClientModInitializer {
         // Handler for the Show GUI Payload
         // Creates a CampSuppliesGUI set to the structure list and displays it.
         ClientPlayNetworking.registerGlobalReceiver(ShowGUIPayload.ID, (payload, context) -> {
-            CampSuppliesGUI gui = new CampSuppliesGUI("structureList", payload.suppliesPos());
+            CampSuppliesGUI gui = new CampSuppliesGUI("structureList", payload.suppliesPos(), payload.upgrades());
             MinecraftClient.getInstance().setScreen(gui);
         });
 

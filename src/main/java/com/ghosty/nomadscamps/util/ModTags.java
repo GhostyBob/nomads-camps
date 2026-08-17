@@ -11,11 +11,19 @@ import net.minecraft.util.Identifier;
 
 /// Registers custom TagKeys.
 public class ModTags {
+    /// Called by the main mod class to initialize static constants.
+    public static void initialize() {
+        Blocks.initialize();
+    }
+
     public static class Blocks {
         /// The list of blocks ignored when packing structures into Camp Supplies.
         /// Meant to contain blocks that are unobtainable or immovable in the base game
         /// (bedrock, monster spawners, etc.).
         public static final TagKey<Block> PACKING_IGNORED_BLOCKS = createTag("packing_ignored_blocks");
+
+        /// Called by ModTags to initialize static constants.
+        protected static void initialize() {}
 
         /// Registers Block tags with the base game.
         ///
