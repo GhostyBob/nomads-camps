@@ -148,7 +148,7 @@ public class CampSuppliesGUI extends Screen {
                 textRenderer.fontHeight,
                 Text.of(ScreenTexts.composeGenericOptionText(
                         Text.of("Upgrade points"),
-                        Text.of(Integer.toString(upgrades.unusedSlotCountUpgrades)))),
+                        Text.of(Integer.toString(upgrades.unusedSlotSizeUpgrades)))),
                 textRenderer);
         this.addDrawableChild(upgradeDisplay);
 

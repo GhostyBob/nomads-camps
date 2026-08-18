@@ -191,15 +191,17 @@ public class NomadsCamps implements ModInitializer {
         return output;
     }
 
-    public static void addSlotUpgrade(MinecraftServer server, String playerName) {
+    public static UpgradeTracker addSlotUpgrades(MinecraftServer server, String playerNameLowerCase, int upgradeCount) {
         Path upgradeDirectory = server.getSavePath(WorldSavePath.GENERATED)
                 .resolve(MOD_ID)
-                .resolve(playerName);
+                .resolve(playerNameLowerCase);
 
         UpgradeTracker upgrades = getUpgradeTracker(upgradeDirectory);
         // Add an upgrade
-        upgrades.unusedSlotSizeUpgrades++;
-        writeUpgradeTrackerToFile(upgradeDirectory.getParent(), upgrades);
+        upgrades.unusedSlotSizeUpgrades += upgradeCount;
+        writeUpgradeTrackerToFile(upgradeDirectory, upgrades);
+
+        return upgrades;
     }
 
     /// Retrieves an UpgradeTracker from the given directory.

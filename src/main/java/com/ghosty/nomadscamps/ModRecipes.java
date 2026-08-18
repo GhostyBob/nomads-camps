@@ -13,6 +13,7 @@ import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.RecipeType;
 import net.minecraft.recipe.SmithingTransformRecipe;
 import net.minecraft.recipe.input.SmithingRecipeInput;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryWrapper;
@@ -64,6 +65,8 @@ public class ModRecipes {
         }
 
         /// Called by the base game to determine the recipe's output.
+        /// Should not change the game state since it is called when
+        /// previewing the output, not when it's actually crafted.
         @Override
         public ItemStack craft(SmithingRecipeInput smithingRecipeInput, RegistryWrapper.WrapperLookup wrapperLookup) {
             ItemStack itemStack = smithingRecipeInput.base().copyComponentsToNewStack(this.result.getItem(), this.result.getCount());
@@ -73,16 +76,12 @@ public class ModRecipes {
             NbtComponent component = itemStack.get(DataComponentTypes.CUSTOM_DATA);
             if (component != null) {
                 NbtCompound nbt = component.copyNbt();
-                if (nbt.contains("owner")) {
+                if (nbt.contains("upgrades")) {
                     // Add an upgrade
-                    NomadsCamps.addSlotUpgrade(
-                            // FIXME null pointer exception on .getHolder(). We need some way to
-                            //  get the server .generated directory
-                            smithingRecipeInput.base().getHolder().getWorld().getServer(),
-                            nbt.getString("owner").toLowerCase()
-                    );
+                    nbt.putInt("upgrades", nbt.getInt("upgrades") + 1);
+
+                    itemStack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
                 }
-                itemStack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
             }
 
             return itemStack;

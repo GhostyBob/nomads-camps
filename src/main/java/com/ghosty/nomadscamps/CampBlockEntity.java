@@ -39,6 +39,9 @@ public class CampBlockEntity extends BlockEntity {
     /// A human-readable representation of these supplies' owner. Null
     /// if there is no owner.
     private String ownerName = null;
+    /// The number of upgrades that have been installed in these camp
+    /// supplies since the last time it was interacted with.
+    private int unsavedUpgrades = 0;
 
     /// Trivial constructor; constructs a CampBlockEntity with the
     /// given state at the given position using the default
@@ -56,24 +59,35 @@ public class CampBlockEntity extends BlockEntity {
     public void showGUI(PlayerEntity player) {
         // Get the relevant ServerPlayerEntity from the passed PlayerEntity.
         if (player instanceof ServerPlayerEntity serverPlayer) {
-            Path upgradeDirectory = serverPlayer.server
-                    .getSavePath(WorldSavePath.GENERATED)
-                    .resolve(NomadsCamps.MOD_ID)
-                    .resolve(player.getNameForScoreboard().toLowerCase());
-
             if (ownedBy(player)) {
+                // Save the unsaved upgrades before showing the GUI
+                UpgradeTracker upgrades = NomadsCamps.addSlotUpgrades(
+                        serverPlayer.server,
+                        serverPlayer.getNameForScoreboard().toLowerCase(),
+                        unsavedUpgrades
+                );
+                unsavedUpgrades = 0;
+
                 // Send a packet to the client to open the camp supplies GUI.
                 ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(
                         pos,
-                        NomadsCamps.getUpgradeTracker(upgradeDirectory)));
+                        upgrades));
                 return;
             }
             // Set these supplies' owner to the passed player, then show
             // them the GUI.
             if (uuid == null && setOwner(player)) {
+                // Save the unsaved upgrades before showing the GUI
+                UpgradeTracker upgrades = NomadsCamps.addSlotUpgrades(
+                        serverPlayer.server,
+                        serverPlayer.getNameForScoreboard().toLowerCase(),
+                        unsavedUpgrades
+                );
+                unsavedUpgrades = 0;
+
                 ServerPlayNetworking.send(serverPlayer, new ShowGUIPayload(
                         pos,
-                        NomadsCamps.getUpgradeTracker(upgradeDirectory)));
+                        upgrades));
                 return;
             }
 
@@ -432,12 +446,16 @@ public class CampBlockEntity extends BlockEntity {
             nbt.putUuid("uuid", uuid);
         if (ownerName != null)
             nbt.putString("owner", ownerName);
+        nbt.putInt("upgrades", unsavedUpgrades);
     }
 
-    /// Used by the base game to extract an entity's data from an NBT compound.
+    /// Used by the base game to set up an entity's data, given an NBT compound.
+    ///
+    /// @param nbt The nbt compound being read from. Not mutated by this method.
     @Override
     public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
         if (nbt.contains("uuid")) uuid = nbt.getUuid("uuid");
         if (nbt.contains("owner")) ownerName = nbt.getString("owner");
+        if (nbt.contains("upgrades")) unsavedUpgrades = nbt.getInt("upgrades");
     }
 }
