@@ -1,5 +1,5 @@
 /// @Author GhostyBob
-/// @Version 8/14/26
+/// @Version 8/18/26
 
 package com.ghosty.nomadscamps;
 
@@ -16,6 +16,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
+import net.minecraft.util.math.Direction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
@@ -63,6 +64,7 @@ public class NomadsCamps implements ModInitializer {
         // Client-bound payloads
         PayloadTypeRegistry.playS2C().register(ShowGUIPayload.ID, ShowGUIPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(ReturnSlotsPayload.ID, ReturnSlotsPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(ReturnUpgradeTrackerPayload.ID, ReturnUpgradeTrackerPayload.CODEC);
 
         // Handler for the Structure Action payload. Places or removes the
         // given structure, depending on the payload type.
@@ -71,14 +73,27 @@ public class NomadsCamps implements ModInitializer {
                     ServerPlayerEntity sender = context.player();
 
                     switch (payload.type()) {
-                        //Case 1 is "build"
+                        // Case 1 is "build"
                         case 1:
-                            CampBlockEntity.placeStructure(sender, payload.slot(), payload.origin());
+                            CampBlockEntity.placeStructure(sender, payload.slot(), payload.position());
                             break;
-                        //Case 2 is "remove"
+                        // Case 2 is "remove"
                         case 2:
                             CampBlockEntity.removeStructure(sender, payload.slot());
                             break;
+                        // Case 3 is "upgrade"
+                        case 3:
+                            Direction dir = Direction.fromVector(
+                                    payload.position().getX(),
+                                    payload.position().getY(),
+                                    payload.position().getZ()
+                            );
+                            assert dir != null;
+                            commitSlotSizeUpgrade(
+                                    sender,
+                                    payload.slot(),
+                                    dir
+                            );
                         default:
                             break;
                     }
@@ -166,6 +181,22 @@ public class NomadsCamps implements ModInitializer {
         return true;
     }
 
+    /// Sends a packet to the client containing a recently modified structure slot
+    /// that needs to be updated.
+    ///
+    /// @param player The ServerPlayerEntity to send the packet to.
+    /// @param slot   The modified slot being sent.
+    public static void returnUpdatedSlot(ServerPlayerEntity player, StructureSlot slot) {
+        ArrayList<StructureSlot> list = new ArrayList<>();
+        list.add(slot);
+
+        ServerPlayNetworking.send(player, new ReturnSlotsPayload(list));
+    }
+
+    public static void returnUpdatedTracker(ServerPlayerEntity player, UpgradeTracker tracker) {
+        ServerPlayNetworking.send(player, new ReturnUpgradeTrackerPayload(tracker));
+    }
+
     /// Returns a list of all registered structure file names.
     ///
     /// @param structureDirectory The directory to look in for structure files.
@@ -191,13 +222,20 @@ public class NomadsCamps implements ModInitializer {
         return output;
     }
 
-    public static UpgradeTracker addSlotUpgrades(MinecraftServer server, String playerNameLowerCase, int upgradeCount) {
+    /// Adds the given number of slot upgrades to the given player's upgrades.json file
+    /// or subtracts them if upgradeCount is negative.
+    ///
+    /// @param server              The currently running server. Used to find the correct directory.
+    /// @param playerNameLowerCase The name of the player to give the upgrades to.
+    /// @param upgradeCount        The number of upgrades to add or subtract.
+    /// @return The newly updated UpgradeTracker.
+    public static UpgradeTracker adjustSlotUpgrades(MinecraftServer server, String playerNameLowerCase, int upgradeCount) {
         Path upgradeDirectory = server.getSavePath(WorldSavePath.GENERATED)
                 .resolve(MOD_ID)
                 .resolve(playerNameLowerCase);
 
         UpgradeTracker upgrades = getUpgradeTracker(upgradeDirectory);
-        // Add an upgrade
+        // Add the upgrades
         upgrades.unusedSlotSizeUpgrades += upgradeCount;
         writeUpgradeTrackerToFile(upgradeDirectory, upgrades);
 
@@ -252,6 +290,98 @@ public class NomadsCamps implements ModInitializer {
         } catch (IOException e) {
             LOGGER.error("An error occurred while writing data to an upgrade data file!", e);
         }
+    }
+
+    /// Calculates the cost to upgrade a slot's size using the following formula:
+    ///
+    /// (size in other dir A - starting size A) / size increment +
+    /// (size in other dir B - starting size B) / size increment
+    ///
+    /// @param slot      The structure slot whose upgrade cost is being calculated.
+    /// @param direction The direction in which to expand the slot boundary.
+    public static int calculateUpgradeCost(StructureSlot slot, Direction direction) {
+
+        int output = 0;
+        switch (direction.getAxis()) {
+            case X:
+                output = (slot.sizeY() - NomadsCamps.CONFIG.startingSlotSizeY())  / NomadsCamps.CONFIG.slotUpgradeSize() + 1;
+                output *= (slot.sizeZ() - NomadsCamps.CONFIG.startingSlotSizeZ())  / NomadsCamps.CONFIG.slotUpgradeSize() + 1;
+                break;
+            case Y:
+                output = (slot.sizeX() - NomadsCamps.CONFIG.startingSlotSizeX())  / NomadsCamps.CONFIG.slotUpgradeSize() + 1;
+                output *= (slot.sizeZ() - NomadsCamps.CONFIG.startingSlotSizeZ())  / NomadsCamps.CONFIG.slotUpgradeSize() + 1;
+                break;
+            case Z:
+                output = (slot.sizeX() - NomadsCamps.CONFIG.startingSlotSizeX())  / NomadsCamps.CONFIG.slotUpgradeSize() + 1;
+                output *= (slot.sizeY() - NomadsCamps.CONFIG.startingSlotSizeY())  / NomadsCamps.CONFIG.slotUpgradeSize() + 1;
+                break;
+        }
+
+        return output;
+    }
+
+    /// Increases the size of the passed structure slot in the given direction,
+    /// then sends the updated slot back to the client to be saved.
+    ///
+    /// @param player    The player to return the updated slot to. Should be
+    ///                  the player that requested this slot upgrade.
+    /// @param slot      The structure slot to upgrade. Mutated by this method
+    ///                  and sent back to player.
+    /// @param direction The direction to expand the slot into.
+    private static void commitSlotSizeUpgrade(ServerPlayerEntity player, StructureSlot slot, Direction direction) {
+        UpgradeTracker tracker = adjustSlotUpgrades(
+                player.server,
+                player.getNameForScoreboard().toLowerCase(),
+                -calculateUpgradeCost(slot, direction)
+        );
+
+        switch(direction) {
+            case NORTH:
+                slot.setSizeZ(slot.sizeZ() + CONFIG.slotUpgradeSize());
+                if(slot.isPlaced()) {
+                    assert slot.getOccupiedArea() != null;
+                    slot.getOccupiedArea().expand(0, 0, -CONFIG.slotUpgradeSize());
+                }
+                break;
+            case SOUTH:
+                slot.setSizeZ(slot.sizeZ() + CONFIG.slotUpgradeSize());
+                if(slot.isPlaced()) {
+                    assert slot.getOccupiedArea() != null;
+                    slot.getOccupiedArea().expand(0, 0, CONFIG.slotUpgradeSize());
+                }
+                break;
+            case EAST:
+                slot.setSizeX(slot.sizeX() + CONFIG.slotUpgradeSize());
+                if(slot.isPlaced()) {
+                    assert slot.getOccupiedArea() != null;
+                    slot.getOccupiedArea().expand(CONFIG.slotUpgradeSize(), 0, 0);
+                }
+                break;
+            case WEST:
+                slot.setSizeX(slot.sizeX() + CONFIG.slotUpgradeSize());
+                if(slot.isPlaced()) {
+                    assert slot.getOccupiedArea() != null;
+                    slot.getOccupiedArea().expand(-CONFIG.slotUpgradeSize(), 0, 0);
+                }
+                break;
+            case UP:
+                slot.setSizeY(slot.sizeY() + CONFIG.slotUpgradeSize());
+                if(slot.isPlaced()) {
+                    assert slot.getOccupiedArea() != null;
+                    slot.getOccupiedArea().expand(0, CONFIG.slotUpgradeSize(), 0);
+                }
+                break;
+            case DOWN:
+                slot.setSizeY(slot.sizeY() + CONFIG.slotUpgradeSize());
+                if(slot.isPlaced()) {
+                    assert slot.getOccupiedArea() != null;
+                    slot.getOccupiedArea().expand(0, -CONFIG.slotUpgradeSize(), 0);
+                }
+                break;
+        }
+
+        returnUpdatedSlot(player, slot);
+        returnUpdatedTracker(player, tracker);
     }
 
     // endregion HELPER METHODS

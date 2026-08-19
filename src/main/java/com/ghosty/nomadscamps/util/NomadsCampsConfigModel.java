@@ -1,5 +1,5 @@
 /// @Author GhostyBob
-/// @Version 8/14/26
+/// @Version 8/18/26
 
 package com.ghosty.nomadscamps.util;
 
@@ -18,6 +18,9 @@ public class NomadsCampsConfigModel {
     public int startingSlotSizeX = 4;
     public int startingSlotSizeY = 4;
     public int startingSlotSizeZ = 4;
+
+    /// The increase in size along the upgraded axis when applying one upgrade.
+    public int slotUpgradeSize = 4;
 
     ///  The furthest in any direction that a structure can be offset from
     /// its Camp Supplies while being placed.

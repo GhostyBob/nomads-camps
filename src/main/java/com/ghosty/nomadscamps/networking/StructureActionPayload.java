@@ -1,5 +1,5 @@
 /// @Author GhostyBob
-/// @Version 8/14/26
+/// @Version 8/18/26
 
 package com.ghosty.nomadscamps.networking;
 
@@ -16,15 +16,15 @@ import net.minecraft.util.math.BlockPos;
 ///
 /// @param type   Dictates which action will be taken. 1 is "build", 2 is "remove".
 /// @param slot   The structure slot being placed, removed, etc.
-/// @param origin The world position to place the slot at. Unused when removing a structure.
-public record StructureActionPayload(int type, StructureSlot slot, BlockPos origin) implements CustomPayload {
+/// @param position The world position to place the slot at. Unused when removing a structure.
+public record StructureActionPayload(int type, StructureSlot slot, BlockPos position) implements CustomPayload {
     public static final Identifier STRUCTURE_ACTION_ID = Identifier.of(NomadsCamps.MOD_ID, "structure_placement_action");
     public static final CustomPayload.Id<StructureActionPayload> ID = new CustomPayload.Id<>(STRUCTURE_ACTION_ID);
     public static final PacketCodec<RegistryByteBuf, StructureActionPayload> CODEC =
             PacketCodec.tuple(
                     PacketCodecs.INTEGER, StructureActionPayload::type,
                     StructureSlot.PACKET_CODEC, StructureActionPayload::slot,
-                    BlockPos.PACKET_CODEC, StructureActionPayload::origin,
+                    BlockPos.PACKET_CODEC, StructureActionPayload::position,
                     StructureActionPayload::new
             );
 

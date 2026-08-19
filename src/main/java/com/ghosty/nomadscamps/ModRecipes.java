@@ -1,3 +1,6 @@
+/// @author GhostyBob
+/// @version 8/18/26
+
 package com.ghosty.nomadscamps;
 
 import com.mojang.serialization.MapCodec;

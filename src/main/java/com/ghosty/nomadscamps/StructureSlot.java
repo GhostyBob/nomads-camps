@@ -1,5 +1,5 @@
 /// @Author GhostyBob
-/// @Version 8/14/26
+/// @Version 8/18/26
 
 package com.ghosty.nomadscamps;
 
@@ -28,11 +28,11 @@ public class StructureSlot {
     @Nullable
     private BlockBox occupiedArea;
     /// The max structure size for this slot along the x-axis.
-    private final int sizeX;
+    private int sizeX;
     /// The max structure size for this slot along the y-axis.
-    private final int sizeY;
+    private int sizeY;
     /// The max structure size for this slot along the z-axis.
-    private final int sizeZ;
+    private int sizeZ;
     /// Whether the structure is currently placed in the world.
     private boolean isPlaced;
     /// Whether the structure should "capture" the entities in the structure's area
@@ -133,14 +133,35 @@ public class StructureSlot {
         return sizeX;
     }
 
+    /// Sets sizeX to the specified amount.
+    ///
+    /// @param size The new sizeX
+    public void setSizeX(int size) {
+        sizeX = size;
+    }
+
     /// @return The max structure size for this slot along the y-axis
     public int sizeY() {
         return sizeY;
     }
 
+    /// Sets sizeY to the specified amount.
+    ///
+    /// @param size The new sizeY
+    public void setSizeY(int size) {
+        sizeY = size;
+    }
+
     /// @return The max structure size for this slot along the z-axis.
     public int sizeZ() {
         return sizeZ;
+    }
+
+    /// Sets sizeZ to the specified amount.
+    ///
+    /// @param size The new sizeZ
+    public void setSizeZ(int size) {
+        sizeZ = size;
     }
 
     /// @return Whether this structure should store entities within its

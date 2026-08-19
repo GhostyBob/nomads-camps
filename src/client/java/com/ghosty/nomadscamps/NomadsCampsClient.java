@@ -1,16 +1,14 @@
 /// @Author GhostyBob
-/// @Version 8/14/26
+/// @Version 8/18/26
 
 package com.ghosty.nomadscamps;
 
-import com.ghosty.nomadscamps.networking.ReturnSlotsPayload;
-import com.ghosty.nomadscamps.networking.ShowGUIPayload;
-import com.ghosty.nomadscamps.networking.StructureActionPayload;
-import com.ghosty.nomadscamps.networking.UpdateSlotsPayload;
+import com.ghosty.nomadscamps.networking.*;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -28,6 +26,15 @@ public class NomadsCampsClient implements ClientModInitializer {
         return slots;
     }
 
+    /// The clientside upgrade tracker. Shouldn't be set outside
+    /// this class.
+    private UpgradeTracker tracker = new UpgradeTracker();
+
+    /// Getter for the clientside upgrade tracker.
+    public UpgradeTracker getTracker() {
+        return tracker;
+    }
+
     /// Allows access to the clientside slot list from a static context.
     public static NomadsCampsClient instance;
     // endregion FIELDS
@@ -41,7 +48,8 @@ public class NomadsCampsClient implements ClientModInitializer {
         // Handler for the Show GUI Payload
         // Creates a CampSuppliesGUI set to the structure list and displays it.
         ClientPlayNetworking.registerGlobalReceiver(ShowGUIPayload.ID, (payload, context) -> {
-            CampSuppliesGUI gui = new CampSuppliesGUI("structureList", payload.suppliesPos(), payload.upgrades());
+            tracker = payload.upgrades();
+            CampSuppliesGUI gui = new CampSuppliesGUI("structureList", payload.suppliesPos());
             MinecraftClient.getInstance().setScreen(gui);
         });
 
@@ -61,6 +69,12 @@ public class NomadsCampsClient implements ClientModInitializer {
                 ClientPlayNetworking.send(new UpdateSlotsPayload(true, slots));
             }
         });
+
+        // Handler for the Return Upgrade Tracker Payload
+        ClientPlayNetworking.registerGlobalReceiver(
+                ReturnUpgradeTrackerPayload.ID, ((payload, context) ->
+                        tracker = payload.tracker())
+        );
     }
 
     // region HELPER METHODS
@@ -81,6 +95,16 @@ public class NomadsCampsClient implements ClientModInitializer {
     /// slot be removed from the world.
     public static void sendRemovePacket(StructureSlot slot) {
         ClientPlayNetworking.send(new StructureActionPayload(2, slot, BlockPos.ORIGIN));
+    }
+
+    /// Sends a Structure Action Payload to the server, requesting the given
+    /// slot's size be upgraded in the given direction.
+    public static void sendUpgradePacket(StructureSlot slot, Direction direction) {
+        ClientPlayNetworking.send(new StructureActionPayload(
+                3,
+                slot,
+                new BlockPos(direction.getVector()))
+        );
     }
     // endregion HELPER METHODS
 }

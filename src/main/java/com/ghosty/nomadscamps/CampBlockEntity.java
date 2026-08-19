@@ -1,10 +1,9 @@
 /// @Author GhostyBob
-/// @Version 8/14/26
+/// @Version 8/18/26
 
 package com.ghosty.nomadscamps;
 
 import com.ghosty.nomadscamps.util.TaggedStructureTemplate;
-import com.ghosty.nomadscamps.networking.ReturnSlotsPayload;
 import com.ghosty.nomadscamps.networking.ShowGUIPayload;
 import com.ghosty.nomadscamps.util.ModTags;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -61,7 +60,7 @@ public class CampBlockEntity extends BlockEntity {
         if (player instanceof ServerPlayerEntity serverPlayer) {
             if (ownedBy(player)) {
                 // Save the unsaved upgrades before showing the GUI
-                UpgradeTracker upgrades = NomadsCamps.addSlotUpgrades(
+                UpgradeTracker upgrades = NomadsCamps.adjustSlotUpgrades(
                         serverPlayer.server,
                         serverPlayer.getNameForScoreboard().toLowerCase(),
                         unsavedUpgrades
@@ -78,7 +77,7 @@ public class CampBlockEntity extends BlockEntity {
             // them the GUI.
             if (uuid == null && setOwner(player)) {
                 // Save the unsaved upgrades before showing the GUI
-                UpgradeTracker upgrades = NomadsCamps.addSlotUpgrades(
+                UpgradeTracker upgrades = NomadsCamps.adjustSlotUpgrades(
                         serverPlayer.server,
                         serverPlayer.getNameForScoreboard().toLowerCase(),
                         unsavedUpgrades
@@ -249,7 +248,7 @@ public class CampBlockEntity extends BlockEntity {
         if (result) {
             slot.place(origin);
             NomadsCamps.LOGGER.debug("Successfully placed {}.", slot.structureName);
-            returnUpdatedSlot(caller, slot);
+            NomadsCamps.returnUpdatedSlot(caller, slot);
 
             return true;
         }
@@ -312,7 +311,7 @@ public class CampBlockEntity extends BlockEntity {
             //fancyFillArea(caller.getServerWorld(), slot.getOccupiedArea(), Blocks.AIR.getDefaultState());
 
             slot.remove();
-            returnUpdatedSlot(caller, slot);
+            NomadsCamps.returnUpdatedSlot(caller, slot);
             return true;
         }
 
@@ -422,18 +421,6 @@ public class CampBlockEntity extends BlockEntity {
         }
     }
     // endregion FANCY FILL AREA
-
-    /// Sends a packet to the client containing a recently modified structure slot
-    /// that needs to be updated.
-    ///
-    /// @param player The ServerPlayerEntity to send the packet to.
-    /// @param slot   The modified slot being sent.
-    private static void returnUpdatedSlot(ServerPlayerEntity player, StructureSlot slot) {
-        ArrayList<StructureSlot> list = new ArrayList<>();
-        list.add(slot);
-
-        ServerPlayNetworking.send(player, new ReturnSlotsPayload(list));
-    }
 
     /// Used by the base game to put an entity's data into an NBT compound.
     ///

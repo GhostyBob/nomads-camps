@@ -1,8 +1,10 @@
 /// @Author GhostyBob
-/// @Version 8/14/26
+/// @Version 8/18/26
 
 package com.ghosty.nomadscamps;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
@@ -13,6 +15,7 @@ import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.*;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import org.apache.commons.lang3.NotImplementedException;
 import org.jetbrains.annotations.Nullable;
@@ -21,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /// Represents the screen displayed to clients when they interact with camp supplies they own.
+@Environment(EnvType.CLIENT)
 public class CampSuppliesGUI extends Screen {
 
     /// A reference to the last visited screen.
@@ -31,8 +35,6 @@ public class CampSuppliesGUI extends Screen {
     private int currentSlotIndex = -1;
     /// The location of the camp supplies that opened this screen, for structure placement offset purposes.
     private final BlockPos pos;
-    /// A tracker for the potential upgrades that can be made to these slots.
-    private final UpgradeTracker upgrades;
     // Some constants used for the look of the menu.
     private static final Identifier BACKGROUND_TEXTURE = Identifier.ofVanilla("textures/gui/demo_background.png");
     private final int backgroundWidth = 248;
@@ -56,12 +58,10 @@ public class CampSuppliesGUI extends Screen {
     ///
     /// @param title       The address of the screen to display. Mainly used by the init method.
     /// @param suppliesPos The position of the CampBlockEntity that was clicked to open this GUI.
-    /// @param tracker     The upgrade tracker for the structure list.
-    public CampSuppliesGUI(String title, BlockPos suppliesPos, UpgradeTracker tracker) {
+    public CampSuppliesGUI(String title, BlockPos suppliesPos) {
         super(Text.of(title));
         address = title;
         pos = suppliesPos;
-        upgrades = tracker;
     }
 
     /// Constructs a screen of this GUI with the given parent.
@@ -70,13 +70,11 @@ public class CampSuppliesGUI extends Screen {
     /// @param title       The address of the screen to display. Mainly used by the init method.
     /// @param prev        The screen to set as the parent of this screen.
     /// @param suppliesPos The position of the CampBlockEntity that was clicked to open this GUI.
-    /// @param tracker     The upgrade tracker for the structure list.
-    public CampSuppliesGUI(String title, Screen prev, BlockPos suppliesPos, UpgradeTracker tracker) {
+    public CampSuppliesGUI(String title, Screen prev, BlockPos suppliesPos) {
         super(Text.of(title));
         address = title;
         prevScreen = prev;
         pos = suppliesPos;
-        upgrades = tracker;
     }
 
 
@@ -138,19 +136,6 @@ public class CampSuppliesGUI extends Screen {
                 20
         ).build();
         this.addDrawableChild(closeButton);
-
-        // TODO finish this
-        // Set up the TEMP upgrade display
-        TextWidget upgradeDisplay = new TextWidget(
-                (width / 2) - (backgroundWidth / 2) + 5,
-                (height / 2) + (backgroundHeight / 2) - 25,
-                backgroundWidth,
-                textRenderer.fontHeight,
-                Text.of(ScreenTexts.composeGenericOptionText(
-                        Text.of("Upgrade points"),
-                        Text.of(Integer.toString(upgrades.unusedSlotSizeUpgrades)))),
-                textRenderer);
-        this.addDrawableChild(upgradeDisplay);
 
         // Fetch saved structures
         if (NomadsCampsClient.instance.getSlots() == null) {
@@ -248,7 +233,7 @@ public class CampSuppliesGUI extends Screen {
         TextFieldWidget nameField = new TextFieldWidget(
                 textRenderer,
                 width / 2 - 100,
-                height / 2 - (3 * (backgroundHeight / 8)),
+                height / 2 - backgroundHeight / 2 + 10,
                 200,
                 20,
                 Text.of("Structure Name")
@@ -264,13 +249,13 @@ public class CampSuppliesGUI extends Screen {
         slotDescBuilder.append(currentSlot.sizeY());
         slotDescBuilder.append("x");
         slotDescBuilder.append(currentSlot.sizeZ());
-        slotDescBuilder.append(" block space.");
+        slotDescBuilder.append(" block space");
         Text slotSize = Text.of(slotDescBuilder.toString());
 
         // Set up the line describing the slot size
         TextWidget slotSizeDescription = new TextWidget(
                 width / 2 - backgroundWidth / 2,
-                height / 2 - (2 * textRenderer.fontHeight),
+                height / 2 - backgroundHeight / 4,
                 backgroundWidth,
                 textRenderer.fontHeight,
                 slotSize,
@@ -278,7 +263,7 @@ public class CampSuppliesGUI extends Screen {
         this.addDrawableChild(slotSizeDescription);
 
         // Build the text for the slot location description
-        slotDescBuilder = new StringBuilder("This structure ");
+        slotDescBuilder = new StringBuilder("and ");
         if (currentSlot.structureFileName.equals(NomadsCamps.DEFAULT_STRUCTURE_FILENAME)) {
             slotDescBuilder.append("has never been placed.");
         } else if (currentSlot.isPlaced()) {
@@ -298,7 +283,7 @@ public class CampSuppliesGUI extends Screen {
         // Set up the line describing slot location
         TextWidget slotPosDescription = new TextWidget(
                 width / 2 - backgroundWidth / 2,
-                height / 2 + textRenderer.fontHeight,
+                height / 2 - backgroundHeight / 4 + textRenderer.fontHeight + 2,
                 backgroundWidth,
                 textRenderer.fontHeight,
                 slotPosition,
@@ -306,32 +291,77 @@ public class CampSuppliesGUI extends Screen {
         this.addDrawableChild(slotPosDescription);
         // endregion SLOT DESCRIPTION
 
+        // region SLOT UPGRADES
+        // Set up the upgrade points display
+        TextWidget upgradeCountDisplay = new TextWidget(
+                width / 2 - backgroundWidth / 2,
+                height / 2,
+                backgroundWidth,
+                textRenderer.fontHeight,
+                Text.of(ScreenTexts.composeGenericOptionText(
+                        Text.of("Available slot size upgrade points"),
+                        Text.of(Integer.toString(NomadsCampsClient.instance.getTracker().unusedSlotSizeUpgrades)))),
+                textRenderer);
+        this.addDrawableChild(upgradeCountDisplay);
+
+        // Set up the upgrade cost display
+        TextWidget upgradeCostDisplay = new TextWidget(
+                width / 2 - backgroundWidth / 2,
+                height / 2 + textRenderer.fontHeight + 2,
+                backgroundWidth,
+                textRenderer.fontHeight,
+                ScreenTexts.EMPTY,
+                textRenderer);
+        this.addDrawableChild(upgradeCostDisplay);
+
+        // Set up the button for choosing a direction
+        // to expand in and link it to the upgrade
+        // cost display.
+        DirectionCycleButton directionButton = new DirectionCycleButton(
+                width / 2 - backgroundWidth / 2 + 10,
+                height / 2 + backgroundHeight / 6,
+                backgroundWidth / 2 - 15,
+                20,
+                null,
+                ButtonWidget::onPress,
+                upgradeCostDisplay
+        );
+        this.addDrawableChild(directionButton);
+
+        // Set up the button to commit the upgrade. Only show it when
+        // directionButton has been clicked at least once.
+        ButtonWidget upgradeButton = ButtonWidget.builder(
+                Text.of("Upgrade"),
+                (btn) -> {
+                    if(directionButton.getDirection() != null) {
+                        NomadsCampsClient.sendUpgradePacket(currentSlot, directionButton.getDirection());
+                        close();
+                    }
+                }
+        ).dimensions(
+                width / 2 + 5,
+                height / 2 + backgroundHeight / 6,
+                backgroundWidth / 2 - 15,
+                20
+        ).build();
+        directionButton.linkUpgradeButton(upgradeButton);
+
+        // endregion SLOT UPGRADES
+
         // Set up the save and close button
         ButtonWidget saveButton = ButtonWidget.builder(
                         ScreenTexts.DONE,
                         (btn) -> {
-                            NomadsCampsClient.instance.getSlots().get(currentSlotIndex).structureName = nameField.getText();
+                            currentSlot.structureName = nameField.getText();
                             close();
                         }
                 ).dimensions(
-                        width / 2 - backgroundWidth / 2 + 10,
+                        width / 2 + backgroundWidth / 4 + 5,
                         height / 2 + backgroundHeight / 2 - 30,
-                        backgroundWidth / 2 - 15,
+                        backgroundWidth / 4 - 15,
                         20)
                 .build();
         this.addDrawableChild(saveButton);
-
-        // Set up the close without saving button
-        ButtonWidget closeButton = ButtonWidget.builder(
-                        ScreenTexts.CANCEL,
-                        (btn) -> close()
-                ).dimensions(
-                        width / 2 + 5,
-                        height / 2 + backgroundHeight / 2 - 30,
-                        backgroundWidth / 2 - 15,
-                        20)
-                .build();
-        this.addDrawableChild(closeButton);
     }
     //endregion PAGE LAYOUTS
 
@@ -347,9 +377,9 @@ public class CampSuppliesGUI extends Screen {
     protected void switchScreen(String title, @Nullable Screen parent, @Nullable Integer index) {
         CampSuppliesGUI output;
         if (parent == null) {
-            output = new CampSuppliesGUI(title, pos, upgrades);
+            output = new CampSuppliesGUI(title, pos);
         } else {
-            output = new CampSuppliesGUI(title, parent, pos, upgrades);
+            output = new CampSuppliesGUI(title, parent, pos);
         }
         if (index != null) output.currentSlotIndex = index;
         assert this.client != null;
@@ -577,6 +607,111 @@ public class CampSuppliesGUI extends Screen {
         @Override
         protected void applyValue() {
             offset = (int) MathHelper.lerp(MathHelper.clamp(this.value, 0.0F, 1.0F), -MAX_OFFSET, MAX_OFFSET);
+        }
+    }
+
+    /// Custom widget to represent the button that cycles through upgrade directions
+    /// on the slot editor.
+    private class DirectionCycleButton extends ButtonWidget {
+        /// The direction currently represented by this button.
+        @Nullable
+        private Direction direction;
+        /// A reference to the TextWidget that estimates upgrade costs.
+        private final TextWidget trackerWidget;
+        /// A reference to the ButtonWidget that commits the upgrade.
+        private ButtonWidget upgradeButton;
+        /// Tracks whether upgradeButton has already been added as a drawable child.
+        private boolean isButtonShown = false;
+
+        /// Constructs a ButtonWidget using the super constructor. Is not set to any
+        /// direction if dir is passed as null. Otherwise, starts with the passed
+        /// direction. Always pass ButtonWidget::onPressed as action to this constructor.
+        protected DirectionCycleButton(
+                int x, int y, int width, int height,
+                @Nullable Direction dir, DirectionCycleButton.PressAction action,
+                TextWidget tracker) {
+            super(
+                    x,
+                    y,
+                    width,
+                    height,
+                    ScreenTexts.composeGenericOptionText(
+                            Text.of("Direction"),
+                            (dir == null ? ScreenTexts.ELLIPSIS : Text.of(dir.asString()))
+                    ),
+                    action, DEFAULT_NARRATION_SUPPLIER
+            );
+            direction = dir;
+            trackerWidget = tracker;
+        }
+
+        /// Logic for pressing this button. Cycles the stored direction and
+        /// updates trackerWidget and upgradeButton accordingly.
+        @Override
+        public void onPress() {
+            cycleDirection();
+            updateTrackerText();
+            showUpgradeButton();
+        }
+
+        /// @return The direction currently represented by this button.
+        public @Nullable Direction getDirection() {
+            return direction;
+        }
+
+        /// Cycles through all 6 directions in the following order:
+        ///
+        /// NORTH -> SOUTH -> EAST -> WEST -> UP -> DOWN -> NORTH -> etc.
+        public void cycleDirection() {
+            if(direction == null) direction = Direction.DOWN;
+
+            direction = switch (direction) {
+                case NORTH -> Direction.SOUTH;
+                case SOUTH -> Direction.EAST;
+                case EAST -> Direction.WEST;
+                case WEST -> Direction.UP;
+                case UP -> Direction.DOWN;
+                default -> Direction.NORTH;
+            };
+
+            setMessage(ScreenTexts.composeGenericOptionText(
+                    Text.of("Direction"),
+                    Text.of(direction.asString())));
+        }
+
+        /// Used to set up the upgradeButton that's updated when this
+        /// button is clicked.
+        ///
+        /// @param button The button to link.
+        public void linkUpgradeButton(ButtonWidget button) {
+            upgradeButton = button;
+        }
+
+        /// Adds the upgrade button as a drawable child if it hasn't
+        /// been added already. Called when clicking this button.
+        private void showUpgradeButton() {
+            if (!isButtonShown) {
+                addDrawableChild(upgradeButton);
+                isButtonShown = true;
+            }
+        }
+
+        /// Updates the text of trackerWidget to reflect changes
+        /// made to this button's state.
+        private void updateTrackerText() {
+            assert NomadsCampsClient.instance.getSlots() != null;
+            assert getDirection() != null;
+            int cost = NomadsCamps.calculateUpgradeCost(
+                    NomadsCampsClient.instance.getSlots().get(currentSlotIndex),
+                    getDirection()
+            );
+
+            trackerWidget.setMessage(Text.of(
+                    "This upgrade will cost " +
+                            cost
+                            + " point" +
+                            (Math.abs(cost) == 1 ? "" : "s")
+                            + "."));
         }
     }
 }
